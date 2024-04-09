@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get install -y git && \
     apt-get clean
 
-RUN pip install --no-cache-dir -r ./backend/requirements.txt
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Dummy command to keep container running
 CMD ["tail", "-f", "/dev/null"]

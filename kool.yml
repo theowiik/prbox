@@ -1,15 +1,6 @@
 scripts:
   format:
-    - kool start # <- Will be slow, but reproduceability + convenvience > speed
-
-    # Linting
-    - kool exec app pip install autoflake
     - kool exec app autoflake --in-place --remove-all-unused-imports --recursive .
-
-    # Formatting
-    - kool exec app pip install black
     - kool exec app black .
-
-    # Import sorting
-    - kool exec app pip install isort
     - kool exec app isort .
+    - kool exec app mdformat .

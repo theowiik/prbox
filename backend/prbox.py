@@ -1,14 +1,20 @@
-from flask import Flask, request, Response
+import json
+from flask import Flask, Response, request
 
 app = Flask(__name__)
 
-@app.route('/', methods=['POST'])
-def ping():
-    print("Ping!")
-    return Response(status=200)
+
+def titleize(title: str) -> str:
+    symbol = "#"
+    bar = symbol * len(title)
+    return f"{bar}\n{title}\n{bar}"
 
 
-@app.route('/webhook', methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def respond():
-    print(request.json)
+    print(titleize("RECIEVED WEBHOOK"))
+
+    json_formatted_str = json.dumps(request.json, indent=2)
+    print(json_formatted_str)
+
     return Response(status=200)
