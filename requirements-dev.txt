@@ -2,3 +2,4 @@ autoflake
 black
 isort
 mdformat-gfm
+mypy

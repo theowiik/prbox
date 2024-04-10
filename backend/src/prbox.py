@@ -1,7 +1,9 @@
 import json
 from flask import Flask, Response, request
+from parsers import GitHubParser, Parser
 
 app = Flask(__name__)
+parser: Parser = GitHubParser()
 
 
 def titleize(title: str) -> str:
@@ -11,10 +13,13 @@ def titleize(title: str) -> str:
 
 
 @app.route("/webhook", methods=["POST"])
-def respond():
-    print(titleize("RECIEVED WEBHOOK"))
+def webhook() -> Response:
+    event = parser.parse(request)
 
-    json_formatted_str = json.dumps(request.json, indent=2)
-    print(json_formatted_str)
+    if event is not None:
+        print(titleize("not none!"))
+        print(event)
+    else:
+        print(titleize("none!"))
 
     return Response(status=200)
