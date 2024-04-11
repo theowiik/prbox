@@ -1,9 +1,8 @@
-import json
 from flask import Flask, Response, request
-from parsers import GitHubParser, Parser
+from parsers import GitHubWebhookParser, WebhookParseer
 
 app = Flask(__name__)
-parser: Parser = GitHubParser()
+parser: WebhookParseer = GitHubWebhookParser()
 
 
 def titleize(title: str) -> str:
