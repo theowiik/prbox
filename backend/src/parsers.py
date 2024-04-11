@@ -5,7 +5,8 @@ from flask import Request
 
 
 class WebhookParseer(Protocol):
-    def parse(self, request: Request) -> None | PrEvent: ...
+    def parse(self, request: Request) -> None | PrEvent:
+        ...
 
 
 class GitHubWebhookParser:
