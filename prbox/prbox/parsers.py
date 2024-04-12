@@ -1,11 +1,13 @@
 from typing import Protocol
 
-from events import PrEvent
-from flask import Request
+from flask.wrappers import Request
+
+from .events import PrEvent
 
 
 class WebhookParseer(Protocol):
-    def parse(self, request: Request) -> None | PrEvent: ...
+    def parse(self, request: Request) -> None | PrEvent:
+        ...
 
 
 class GitHubWebhookParser:
