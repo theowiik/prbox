@@ -1,6 +1,6 @@
 from flask import Flask, Response, request
-from parsers import GitHubWebhookParser, WebhookParseer
 
+from .parsers import GitHubWebhookParser, WebhookParseer
 from .util import titleize
 
 app = Flask(__name__)

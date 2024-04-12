@@ -1,6 +1,6 @@
 import unittest
 
-from prbox.util import none_or_whitespace
+from src.util import none_or_whitespace
 
 
 class UtilTest(unittest.TestCase):
