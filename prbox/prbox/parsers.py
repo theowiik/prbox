@@ -1,6 +1,8 @@
 from typing import Protocol
+
 from flask.wrappers import Request
-from events import PrEvent
+
+from .events import PrEvent
 
 
 class WebhookParseer(Protocol):
