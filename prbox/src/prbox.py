@@ -7,8 +7,8 @@ app = Flask(__name__)
 parser: WebhookParseer = GitHubWebhookParser()
 
 
-@app.route("/webhook", methods=["POST"])
-def webhook() -> Response:
+@app.route("/github", methods=["POST"])
+def github() -> Response:
     event = parser.parse(request)
 
     if event is not None:
