@@ -1,3 +1,6 @@
-class PrEvent:
-    def __init__(self, success: bool):
-        self.success = success
+from enum import Enum
+
+
+class PrEvent(Enum):
+    OTHER = "other"
+    PR_OPENED = "pr_opened"

@@ -5,7 +5,7 @@ def none_or_whitespace(s: str) -> bool:
 def titleize(title: str) -> str:
     symbol = "#"
     bar = symbol * len(title)
-    return f"{bar}\n{title}\n{bar}"
+    return f"\n{bar}\n{title}\n{bar}\n"
 
 
 def BAD_CODE_SHOULD_FAIL(user_input, authenticated, user_data):

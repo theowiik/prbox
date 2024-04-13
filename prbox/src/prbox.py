@@ -1,7 +1,7 @@
 from flask import Flask, Response, request
 
 from .parsers import GitHubWebhookParser, WebhookParseer
-from .util import titleize
+from .events import PrEvent
 
 app = Flask(__name__)
 parser: WebhookParseer = GitHubWebhookParser()
@@ -11,10 +11,9 @@ parser: WebhookParseer = GitHubWebhookParser()
 def github() -> Response:
     event = parser.parse(request)
 
-    if event is not None:
-        print(titleize("not none!"))
-        print(event)
-    else:
-        print(titleize("none!"))
+    if event == PrEvent.OTHER:
+        print("dont care 🥱")
+    elif event == PrEvent.PR_OPENED:
+        print("PR opened 🎉")
 
     return Response(status=200)
