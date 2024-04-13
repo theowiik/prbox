@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="320pt"
+   height="320pt"
+   viewBox="0 0 426.66668 426.66667"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   sodipodi:docname="logo.svg"
+   inkscape:export-filename="logo.png"
+   inkscape:export-xdpi="225"
+   inkscape:export-ydpi="225"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.4778115"
+     inkscape:cx="158.68059"
+     inkscape:cy="246.64851"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     showguides="true"
+     inkscape:export-bgcolor="#ffffff00" />
+  <defs
+     id="defs1">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="-221.50806 : 91.745639 : 0"
+       inkscape:vp_y="-1.907298e-13 : 1290.1726 : 0"
+       inkscape:vp_z="221.50806 : 91.745639 : 0"
+       inkscape:persp3d-origin="220.47061 : 193.53025 : 1"
+       id="perspective1" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="display:none;fill:#e2d3cd;fill-opacity:1;stroke-width:28.5011"
+       id="rect1"
+       width="464.61197"
+       height="459.10532"
+       x="-14.909398"
+       y="-14.822752"
+       inkscape:label="bg-beige" />
+    <rect
+       style="display:none;fill:#ffffff;fill-opacity:1;stroke-width:28.5011"
+       id="rect1-6"
+       width="464.61197"
+       height="459.10532"
+       x="-15.000001"
+       y="-15.307284"
+       inkscape:label="bg-white" />
+    <rect
+       style="display:none;fill:#232323;fill-opacity:1;stroke-width:28.5011"
+       id="rect1-0"
+       width="464.61197"
+       height="459.10532"
+       x="-15.000001"
+       y="-14.579178"
+       inkscape:label="bg-black" />
+    <rect
+       style="fill:#e2d3cd;fill-opacity:1;stroke-width:46.661"
+       id="rect2"
+       width="426.66669"
+       height="426.66669"
+       x="0"
+       y="-8.8817842e-16"
+       rx="37.795277" />
+    <g
+       sodipodi:type="inkscape:box3d"
+       id="g1"
+       style="fill:#e2d3cd;stroke-width:11.6183"
+       inkscape:perspectiveID="#perspective1"
+       inkscape:corner0="0.55738385 : 0.074592548 : 0 : 1"
+       inkscape:corner7="0.031376848 : -0.040713983 : 0.5243182 : 1"
+       inkscape:label="cube">
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path6"
+         style="fill:#e9e9ff;fill-rule:evenodd;stroke:none;stroke-linejoin:round"
+         inkscape:box3dsidetype="11"
+         d="M 213.1463,37.657723 329.66109,85.916572 V 234.6819 L 213.1463,186.42305 Z"
+         points="329.66109,85.916572 329.66109,234.6819 213.1463,186.42305 213.1463,37.657723 " />
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path1"
+         style="fill:#353564;fill-rule:evenodd;stroke:none;stroke-linejoin:round"
+         inkscape:box3dsidetype="6"
+         d="m 97.005594,85.761632 0,148.765328 116.140706,-48.10391 0,-148.765327 z"
+         points="97.005594,234.52696 213.1463,186.42305 213.1463,37.657723 97.005594,85.761632 " />
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path5"
+         style="fill:#afafde;fill-rule:evenodd;stroke:none;stroke-width:10.7451;stroke-linejoin:round"
+         inkscape:box3dsidetype="13"
+         d="M 97.005594,234.52696 213.52038,282.78581 329.66109,234.6819 213.1463,186.42305 Z"
+         points="213.52038,282.78581 329.66109,234.6819 213.1463,186.42305 97.005594,234.52696 " />
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path2"
+         style="fill:#72220f;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-linejoin:round"
+         inkscape:box3dsidetype="5"
+         d="M 97.005594,85.761632 213.52038,134.02048 329.66109,85.916572 213.1463,37.657723 Z"
+         points="213.52038,134.02048 329.66109,85.916572 213.1463,37.657723 97.005594,85.761632 " />
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path4"
+         style="fill:#9e6159;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:9.95874;stroke-linejoin:round"
+         inkscape:box3dsidetype="14"
+         d="m 213.52038,134.02048 0,148.76533 116.14071,-48.10391 V 85.916572 Z"
+         points="213.52038,282.78581 329.66109,234.6819 329.66109,85.916572 213.52038,134.02048 " />
+      <path
+         sodipodi:type="inkscape:box3dside"
+         id="path3"
+         style="fill:#7b2c2a;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-linejoin:round"
+         inkscape:box3dsidetype="3"
+         d="m 97.005594,85.761632 116.514786,48.258848 0,148.76533 -116.514786,-48.25885 z"
+         points="213.52038,134.02048 213.52038,282.78581 97.005594,234.52696 97.005594,85.761632 " />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:90.1187px;font-family:'Tilt Warp';-inkscape-font-specification:'Tilt Warp';letter-spacing:0px;word-spacing:21.1217px;fill:#7a4032;fill-opacity:1;stroke-width:49.0795"
+       x="86.317932"
+       y="361.33389"
+       id="text1"
+       inkscape:label="title"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         x="86.317932"
+         y="361.33389"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Bluu Next';-inkscape-font-specification:'Bluu Next';fill:#7b2c2a;fill-opacity:1;stroke-width:49.0795">prbox</tspan></text>
+  </g>
+</svg>

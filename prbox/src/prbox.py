@@ -1,14 +1,14 @@
 from flask import Flask, Response, request
-from parsers import GitHubWebhookParser, WebhookParseer
 
+from .parsers import GitHubWebhookParser, WebhookParseer
 from .util import titleize
 
 app = Flask(__name__)
 parser: WebhookParseer = GitHubWebhookParser()
 
 
-@app.route("/webhook", methods=["POST"])
-def webhook() -> Response:
+@app.route("/github", methods=["POST"])
+def github() -> Response:
     event = parser.parse(request)
 
     if event is not None:
