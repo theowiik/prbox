@@ -1,25 +1,39 @@
-from flask import Flask, request, jsonify
+from flask import Flask, Response, request
+from .core.impl.console_light import ConsoleLight
+from .core.impl.console_speaker import ConsoleSpeaker
+from .core.light import Light
+from .core.speaker import Speaker
+
 app = Flask(__name__)
 
-@app.route('/configure_light', methods=['POST'])
+light: Light = ConsoleLight()
+speaker: Speaker = ConsoleSpeaker()
+
+
+@app.route("/light", methods=["POST"])
 def configure_light():
     data = request.json
-    brightness = data.get('brightness')
-    color = data.get('color')
-    on_off = data.get('on_off')
+    brightness = data.get("brightness")
+    color = data.get("color")
+    on = data.get("on")
 
-    return jsonify({'status': 'success', 'brightness': brightness, 'color': color, 'on_off': on_off})
+    light.on() if on else light.off()
 
-@app.route('/beep_speaker', methods=['POST'])
+    return Response(status=204)
+
+
+@app.route("/beep", methods=["POST"])
 def beep_speaker():
-    # Add your logic here to beep the speaker
-    return jsonify({'status': 'success', 'action': 'beep'})
+    speaker.beep()
 
-@app.route('/speak', methods=['POST'])
+    return Response(status=204)
+
+
+@app.route("/speak", methods=["POST"])
 def speak():
-    text = request.json.get('text')
-    # Add your logic here to handle text to speech conversion
-    return jsonify({'status': 'success', 'text': text})
+    text = request.json.get("text")
+    return Response(status=204)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True)
