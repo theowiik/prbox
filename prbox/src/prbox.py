@@ -1,8 +1,9 @@
 import logging
+
 from flask import Flask, Response, request
 
-from .parsers import GitHubWebhookParser, WebhookParseer
 from .events import PrOpenedEvent, StarredEvent
+from .parsers import GitHubWebhookParser, WebhookParseer
 
 app = Flask(__name__)
 parser: WebhookParseer = GitHubWebhookParser()
