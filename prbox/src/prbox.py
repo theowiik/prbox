@@ -1,20 +1,33 @@
+import logging
+
 from flask import Flask, Response, request
 
+from .events import PrOpenedEvent, StarredEvent
 from .parsers import GitHubWebhookParser, WebhookParseer
-from .util import titleize
 
 app = Flask(__name__)
 parser: WebhookParseer = GitHubWebhookParser()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+@app.route("/ping", methods=["GET"])
+def ping() -> Response:
+    return Response(status=200)
 
 
 @app.route("/github", methods=["POST"])
 def github() -> Response:
     event = parser.parse(request)
 
-    if event is not None:
-        print(titleize("not none!"))
-        print(event)
+    if event is None:
+        logger.info("Don't care 🥱")
+    elif isinstance(event, PrOpenedEvent):
+        logger.info("PR opened 🎉")
+    elif isinstance(event, StarredEvent):
+        logger.info("Repository starred 🌟")
     else:
-        print(titleize("none!"))
+        logger.warning(f"Unhandled event 🤷‍♂️: {event}")
 
     return Response(status=200)
