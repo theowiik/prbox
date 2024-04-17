@@ -12,6 +12,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+@app.route("/ping", methods=["GET"])
+def ping() -> Response:
+    return Response(status=200)
+
+
 @app.route("/github", methods=["POST"])
 def github() -> Response:
     event = parser.parse(request)

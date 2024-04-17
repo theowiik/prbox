@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "prbox",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
