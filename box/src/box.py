@@ -33,7 +33,3 @@ def beep_speaker():
 def speak():
     text = request.json.get("text")
     return Response(status=204)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
