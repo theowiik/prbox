@@ -1,4 +1,5 @@
 from flask import Flask, Response, request
+from .core.impl.system_speaker import SystemSpeaker
 from .core.impl.console_light import ConsoleLight
 from .core.impl.console_speaker import ConsoleSpeaker
 from .core.light import Light
@@ -7,7 +8,7 @@ from .core.speaker import Speaker
 app = Flask(__name__)
 
 light: Light = ConsoleLight()
-speaker: Speaker = ConsoleSpeaker()
+speaker: Speaker = SystemSpeaker()
 
 
 @app.route("/light", methods=["POST"])

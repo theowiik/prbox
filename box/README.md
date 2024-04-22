@@ -18,6 +18,5 @@ docker-compose up
 | What?                  | How?                              |
 | ---------------------- | --------------------------------- |
 | 📦 Install dependencies | `pip install -r requirements.txt` |
-| 🚀 Run                  | `flask --app src/box run`         |
+| 🚀 Run                  | `flask --app src/box run --host=0.0.0.0 --port=6000`         |
 | 🧪 Run tests            | `pytest`                          |
-
