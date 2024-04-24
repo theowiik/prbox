@@ -1,28 +1,35 @@
+import logging
 import os
+
 from flask import Flask, Response, request
 
-from .core.impl.orca_tts import OrcaTTS
-from .util import none_or_whitespace
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
-from .core.tts import TTS
+from .core.impl.console_light import ConsoleLight
+from .core.impl.orca_tts import OrcaTTS
 from .core.impl.six_tts import SixTTS
 from .core.impl.system_speaker import SystemSpeaker
-from .core.impl.console_light import ConsoleLight
 from .core.light import Light
 from .core.speaker import Speaker
+from .core.tts import TTS
+from .util import none_or_whitespace
 
 app = Flask(__name__)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 light: Light = ConsoleLight()
 speaker: Speaker = SystemSpeaker()
 tts: TTS = SixTTS()
 
-
 # Use the PicoVoice TTS service if the access key is set
 pv_key = os.getenv(PICOVOICE_ACCESS_KEY)
-print(f"this is the key: {pv_key}")
+
 if not none_or_whitespace(pv_key):
-    tts = OrcaTTS()
+    try:
+        tts = OrcaTTS()
+    except Exception as e:
+        logger.error(f"Failed to create Orca TTS: {e}")
 
 if not os.path.isdir(TEMP_DIR):
     os.makedirs(TEMP_DIR)

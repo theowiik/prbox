@@ -18,6 +18,6 @@ docker-compose up
 | What?                                           | How?                                                                                         |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | 📦 Install dependencies                          | `pip install -r requirements.txt`                                                            |
-| 🚀 Run backend                                   | `flask --app src/prbox run --host=0.0.0.0`                                                                  |
+| 🚀 Run backend                                   | `flask --app src/prbox run --host=0.0.0.0`                                                   |
 | 🧪 Run tests                                     | `pytest`                                                                                     |
 | 🔓 (optional) Open ports without port-forwarding | `ngrok http 5000 --verify-webhook github --verify-webhook-secret={SECRET} --domain={DOMAIN}` |

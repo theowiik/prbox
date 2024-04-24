@@ -1,6 +1,7 @@
+from playsound import playsound
+
 from ...constants import BEEP_SOUND_PATH
 from ..speaker import Speaker
-from playsound import playsound
 
 
 class SystemSpeaker(Speaker):
