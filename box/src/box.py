@@ -1,7 +1,9 @@
 import logging
 import os
 
-from flask import Flask, Response, request
+from flask import Flask, jsonify, request
+from playsound import playsound
+from werkzeug.utils import secure_filename
 
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
 from .core.impl.console_light import ConsoleLight
@@ -35,28 +37,57 @@ if not os.path.isdir(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in {
+        "wav",
+        "mp3",
+        "aac",
+    }
+
+
 @app.route("/light", methods=["POST"])
 def configure_light():
     data = request.json
-    brightness = data.get("brightness")
-    color = data.get("color")
     on = data.get("on")
 
     light.on() if on else light.off()
 
-    return Response(status=204)
+    return jsonify({"status": "Light configured"}), 200
 
 
 @app.route("/beep", methods=["POST"])
 def beep_speaker():
     speaker.beep()
 
-    return Response(status=204)
+    return jsonify({"status": "Beeped"}), 200
 
 
 @app.route("/speak", methods=["POST"])
 def speak():
-    print("speaking")
     text = request.json.get("text")
     tts.say(text)
-    return Response(status=204)
+
+    return jsonify({"status": "Spoken"}), 200
+
+
+@app.route("/play", methods=["POST"])
+def play():
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio part"}), 400
+
+    file = request.files["audio"]
+
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(TEMP_DIR, filename)
+        file.save(filepath)
+
+        playsound(filepath)
+        # os.remove(filepath)
+
+        return jsonify({"status": "Audio played successfully"}), 200
+
+    return jsonify({"error": "File type not allowed"}), 400
