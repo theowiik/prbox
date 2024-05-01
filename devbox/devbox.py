@@ -29,13 +29,14 @@ def light():
 @cli.command()
 def play():
     """Upload an audio file to play."""
+    metadata = {"name": "Example Audio"}
+    files = {
+        "audio": (SAMPLE_AUDIO, open(SAMPLE_AUDIO, "rb"), "audio/mpeg"),
+        "json": (None, json.dumps(metadata), "application/json"),
+    }
 
-    metadata = {'name': 'Example Audio'}
-    with open(SAMPLE_AUDIO, "rb") as audio_file:
-        files = {'audio': (SAMPLE_AUDIO, audio_file, 'audio/mpeg')}
-        data = {'json': (None, json.dumps(metadata), 'application/json')}
-        response = requests.post(f"{API_BASE_URL}/play", files=files, data=data)
-        click.echo(f"Response from play: {response.status_code} - {response.text}")
+    response = requests.post(f"{API_BASE_URL}/play", files=files)
+    click.echo(f"Response from play: {response.status_code} - {response.text}")
 
 
 @cli.command()

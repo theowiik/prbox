@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -72,15 +73,18 @@ def speak():
 
 @app.route("/play", methods=["POST"])
 def play():
-    print("eeeee!!")
-    data = request.json
-    name = data['name'] if data and 'name' in data else 'default_name'
+    print("Request received!")
+
+    if "json" in request.form:
+        data = json.loads(request.form["json"])
+        name = data["name"]
+    else:
+        name = "default_name"
 
     if "audio" not in request.files:
         return jsonify({"error": "No audio part"}), 400
 
-    file = request.files['audio']
-
+    file = request.files["audio"]
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
