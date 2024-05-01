@@ -1,37 +1,50 @@
-[
+{
+  "sfxs": [
     {
-        "action": "light",
-        "light": {
-            "on": true,
-            "color": "#FF0000"
-        },
-        "blocking": false,
-        "duration_ms": 5000
+      "name": "wee",
+      "data": "..."
     },
     {
-        "action": "sound",
-        "sound": {
-            "file": "wee.mp3"
-        },
-        "blocking": true,
-        "duration_ms": 5000
+      "name": "woo",
+      "data": "..."
+    }
+  ],
+
+  "instructions": [
+    {
+      "action": "light",
+      "light": {
+        "on": true,
+        "color": "#FF0000"
+      },
+      "blocking": false,
+      "duration_ms": 5000
+    },
+    {
+      "action": "sound",
+      "sound": {
+        "name": "wee"
+      },
+      "blocking": true,
+      "duration_ms": 5000
     },
 
     {
-        "action": "light",
-        "light": {
-            "on": true,
-            "color": "#0000FF"
-        },
-        "blocking": false,
-        "duration_ms": 5000
+      "action": "light",
+      "light": {
+        "on": true,
+        "color": "#0000FF"
+      },
+      "blocking": false,
+      "duration_ms": 5000
     },
     {
-        "action": "sound",
-        "sound": {
-            "file": "woo.mp3"
-        },
-        "blocking": true,
-        "duration_ms": 5000
+      "action": "sound",
+      "sound": {
+        "name": "woo"
+      },
+      "blocking": true,
+      "duration_ms": 5000
     }
-]
+  ]
+}

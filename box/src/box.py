@@ -72,10 +72,14 @@ def speak():
 
 @app.route("/play", methods=["POST"])
 def play():
+    print("eeeee!!")
+    data = request.json
+    name = data['name'] if data and 'name' in data else 'default_name'
+
     if "audio" not in request.files:
         return jsonify({"error": "No audio part"}), 400
 
-    file = request.files["audio"]
+    file = request.files['audio']
 
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
@@ -88,6 +92,6 @@ def play():
         playsound(filepath)
         # os.remove(filepath)
 
-        return jsonify({"status": "Audio played successfully"}), 200
+        return jsonify({"status": "Audio played successfully", "name": name}), 200
 
     return jsonify({"error": "File type not allowed"}), 400
