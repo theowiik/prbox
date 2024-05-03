@@ -1,4 +1,5 @@
 import json
+
 import click
 import requests
 
@@ -11,7 +12,6 @@ SAMPLE_AUDIO = "sample.mp3"
 @click.group()
 def cli():
     """Simple CLI for controlling devices via API."""
-    pass
 
 
 @cli.command()

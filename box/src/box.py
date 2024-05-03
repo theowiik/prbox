@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -6,10 +5,9 @@ from flask import Flask, jsonify, request
 from playsound import playsound
 from werkzeug.utils import secure_filename
 
-from .core.impl.console_tts import ConsoleTTS
-
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
 from .core.impl.console_light import ConsoleLight
+from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS
 from .core.impl.system_speaker import SystemSpeaker
 from .core.light import Light
@@ -76,12 +74,6 @@ def speak():
 def play():
     print("Request received!")
 
-    if "json" in request.form:
-        data = json.loads(request.form["json"])
-        name = data["name"]
-    else:
-        name = "default_name"
-
     if "audio" not in request.files:
         return jsonify({"error": "No audio part"}), 400
 
@@ -97,6 +89,6 @@ def play():
         playsound(filepath)
         # os.remove(filepath)
 
-        return jsonify({"status": "Audio played successfully", "name": name}), 200
+        return jsonify({"status": "Audio played successfully"}), 200
 
     return jsonify({"error": "File type not allowed"}), 400
