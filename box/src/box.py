@@ -6,10 +6,11 @@ from flask import Flask, jsonify, request
 from playsound import playsound
 from werkzeug.utils import secure_filename
 
+from .core.impl.console_tts import ConsoleTTS
+
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
 from .core.impl.console_light import ConsoleLight
 from .core.impl.orca_tts import OrcaTTS
-from .core.impl.six_tts import SixTTS
 from .core.impl.system_speaker import SystemSpeaker
 from .core.light import Light
 from .core.speaker import Speaker
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 light: Light = ConsoleLight()
 speaker: Speaker = SystemSpeaker()
-tts: TTS = SixTTS()
+tts: TTS = ConsoleTTS()
 
 # Use the PicoVoice TTS service if the access key is set
 pv_key = os.getenv(PICOVOICE_ACCESS_KEY)
