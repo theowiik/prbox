@@ -2,7 +2,6 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
-from playsound import playsound
 from werkzeug.utils import secure_filename
 
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
@@ -86,8 +85,7 @@ def play():
         filepath = os.path.join(TEMP_DIR, filename)
         file.save(filepath)
 
-        playsound(filepath)
-        # os.remove(filepath)
+        speaker.play(filepath)
 
         return jsonify({"status": "Audio played successfully"}), 200
 

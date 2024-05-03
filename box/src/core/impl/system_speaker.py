@@ -1,3 +1,5 @@
+import multiprocessing
+
 from playsound import playsound
 
 from ...constants import BEEP_SOUND_PATH
@@ -8,5 +10,8 @@ class SystemSpeaker(Speaker):
     """Plays audio through the system's speakers."""
 
     def beep(self) -> None:
-        # TODO: Dont block the main thread
-        playsound(BEEP_SOUND_PATH)
+        self.play(BEEP_SOUND_PATH)
+
+    def play(self, path: str) -> None:
+        p = multiprocessing.Process(target=playsound, args=(path,))
+        p.start()
