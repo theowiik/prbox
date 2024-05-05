@@ -10,6 +10,7 @@ from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS
 from .core.impl.system_speaker import SystemSpeaker
 from .core.light import Light
+from webargs import fields
 from .core.speaker import Speaker
 from .core.tts import TTS
 from .util import none_or_whitespace
@@ -45,10 +46,11 @@ def allowed_file(filename):
 
 
 @app.route("/light", methods=["POST"])
+@use_args({"on": fields.Bool(required=True)}, location="json")
 def configure_light():
     data = request.json
-    on = data.get("on")
 
+    on = data.get("on")
     light.on() if on else light.off()
 
     return jsonify({"status": "Light configured"}), 200
@@ -74,7 +76,7 @@ def play():
     print("Request received!")
 
     if "audio" not in request.files:
-        return jsonify({"error": "No audio part"}), 400
+        return jsonify({"error": "Attach audio to 'audio' field in file form"}), 400
 
     f = request.files["audio"]
 
