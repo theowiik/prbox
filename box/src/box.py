@@ -76,14 +76,15 @@ def play():
     if "audio" not in request.files:
         return jsonify({"error": "No audio part"}), 400
 
-    file = request.files["audio"]
-    if file.filename == "":
+    f = request.files["audio"]
+
+    if f.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
+    if f and allowed_file(f.filename):
+        filename = secure_filename(f.filename)
         filepath = os.path.join(TEMP_DIR, filename)
-        file.save(filepath)
+        f.save(filepath)
 
         speaker.play(filepath)
 
