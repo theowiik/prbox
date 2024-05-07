@@ -2,26 +2,23 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
-from webargs import fields
-from webargs.flaskparser import use_args
 from werkzeug.utils import secure_filename
 
+from .blueprints.light_controller import light_bp
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
-from .core.impl.console_light import ConsoleLight
 from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS
 from .core.impl.system_speaker import SystemSpeaker
-from .core.light import Light
 from .core.speaker import Speaker
 from .core.tts import TTS
 from .util import none_or_whitespace
 
 app = Flask(__name__)
+app.register_blueprint(light_bp)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-light: Light = ConsoleLight()
 speaker: Speaker = SystemSpeaker()
 tts: TTS = ConsoleTTS()
 
@@ -46,17 +43,6 @@ def allowed_file(filename):
         "mp3",
         "aac",
     }
-
-
-@app.route("/light", methods=["POST"])
-@use_args({"on": fields.Bool(required=True)}, location="json")
-def configure_light():
-    data = request.json
-
-    on = data.get("on")
-    light.on() if on else light.off()
-
-    return jsonify({"status": "Light configured"}), 200
 
 
 @app.route("/beep", methods=["POST"])

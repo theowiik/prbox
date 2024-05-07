@@ -1,7 +1,7 @@
 from typing import Protocol
 
+from .light_state import LightState
+
 
 class Light(Protocol):
-    def on(self) -> None: ...
-
-    def off(self) -> None: ...
+    def set_state(self, state: LightState) -> None: ...
