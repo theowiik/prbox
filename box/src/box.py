@@ -2,6 +2,8 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
+from webargs import fields
+from webargs.flaskparser import use_args
 from werkzeug.utils import secure_filename
 
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
@@ -10,7 +12,6 @@ from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS
 from .core.impl.system_speaker import SystemSpeaker
 from .core.light import Light
-from webargs import fields
 from .core.speaker import Speaker
 from .core.tts import TTS
 from .util import none_or_whitespace
@@ -27,7 +28,9 @@ tts: TTS = ConsoleTTS()
 # Use the PicoVoice TTS service if the access key is set
 pv_key = os.getenv(PICOVOICE_ACCESS_KEY)
 
-if not none_or_whitespace(pv_key):
+if none_or_whitespace(pv_key):
+    logger.info("PicoVoice access key not set, using console TTS")
+else:
     try:
         tts = OrcaTTS()
     except Exception as e:

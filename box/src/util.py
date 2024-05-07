@@ -8,8 +8,8 @@ def greet(s: str) -> str:
 
 def hex_to_rgb(hex_code: str) -> tuple:
     """Converts a hex color code to an RGB tuple."""
-    hex_code = hex_code.lstrip('#')
-    return tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
+    hex_code = hex_code.lstrip("#")
+    return tuple(int(hex_code[i : i + 2], 16) for i in (0, 2, 4))
 
 
 def print_color(text: str, hex_code: str) -> None:
