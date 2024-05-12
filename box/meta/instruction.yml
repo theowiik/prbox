@@ -3,7 +3,7 @@ sfxs:
     data: "..."
   - name: woo
     data: "..."
- 
+
 steps:
   - action: light
     light:
