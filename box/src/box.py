@@ -4,8 +4,8 @@ import os
 from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
 
-from .blueprints.light_bp import light_bp
 from .blueprints.instructions_bp import instructions_bp
+from .blueprints.light_bp import light_bp
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
 from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS

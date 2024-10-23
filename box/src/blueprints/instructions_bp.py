@@ -1,6 +1,7 @@
+from typing import List, Optional
+
 from flask import Blueprint, jsonify, request
 from pydantic import BaseModel, ValidationError
-from typing import List, Optional
 
 instructions_bp = Blueprint("instructions", __name__)
 

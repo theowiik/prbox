@@ -1,6 +1,5 @@
 #!/bin/bash
 
-autoflake --in-place --remove-all-unused-imports --recursive .
-black .
-isort .
-mdformat .
+ruff format .
+ruff check --fix
+ruff check --select=I --fix
