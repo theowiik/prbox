@@ -1,0 +1,32 @@
+sfxs:
+  - name: wee
+    data: "..."
+  - name: woo
+    data: "..."
+
+steps:
+  - action: light
+    light:
+      enabled: true
+      color: "#FF0000"
+    blocking: false
+    duration_ms: 5000
+
+  - action: sound
+    sound:
+      name: wee
+    blocking: true
+    duration_ms: 5000
+
+  - action: light
+    light:
+      enabled: true
+      color: "#0000FF"
+    blocking: false
+    duration_ms: 5000
+
+  - action: sound
+    sound:
+      name: woo
+    blocking: true
+    duration_ms: 5000

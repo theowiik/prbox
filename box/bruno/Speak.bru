@@ -1,0 +1,17 @@
+meta {
+  name: Speak
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:6000/speak
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "text": "Hello world. This is some sample text."
+  }
+}

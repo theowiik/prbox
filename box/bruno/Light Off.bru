@@ -1,0 +1,19 @@
+meta {
+  name: Light Off
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:6000/light
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "on": false,
+    "brightness": 1,
+    "color": "#FFFFFF"
+  }
+}

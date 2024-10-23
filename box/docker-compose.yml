@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  prbox:
+  box:
     build: .
     ports:
-      - "5000:5000"
+      - "6000:6000"
