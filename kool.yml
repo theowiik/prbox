@@ -1,7 +1,0 @@
-scripts:
-  format:
-    # TODO: Run format.sh instead
-    - kool exec app autoflake --in-place --remove-all-unused-imports --recursive .
-    - kool exec app black .
-    - kool exec app isort .
-    - kool exec app mdformat .

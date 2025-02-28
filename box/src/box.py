@@ -1,11 +1,11 @@
 import logging
 import os
 
-from flask import Flask, jsonify, request
-from werkzeug.utils import secure_filename
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
-from .blueprints.light_bp import light_bp
 from .blueprints.instructions_bp import instructions_bp
+from .blueprints.light_bp import light_bp
 from .constants import PICOVOICE_ACCESS_KEY, TEMP_DIR
 from .core.impl.console_tts import ConsoleTTS
 from .core.impl.orca_tts import OrcaTTS
@@ -14,9 +14,11 @@ from .core.speaker import Speaker
 from .core.tts import TTS
 from .util import none_or_whitespace
 
-app = Flask(__name__)
-app.register_blueprint(light_bp)
-app.register_blueprint(instructions_bp)
+app = FastAPI()
+
+# Register your routes (FastAPI doesn't have blueprints, but you can use routers for modularity)
+app.include_router(light_bp.router)
+app.include_router(instructions_bp.router)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +41,7 @@ if not os.path.isdir(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
 
-def allowed_file(filename):
+def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {
         "wav",
         "mp3",
@@ -47,40 +49,31 @@ def allowed_file(filename):
     }
 
 
-@app.route("/beep", methods=["POST"])
-def beep_speaker():
+# Pydantic model for speak request
+class SpeakRequest(BaseModel):
+    text: str
+
+
+@app.post("/beep")
+async def beep_speaker():
     speaker.beep()
-
-    return jsonify({"status": "Beeped"}), 200
-
-
-@app.route("/speak", methods=["POST"])
-def speak():
-    text = request.json.get("text")
-    tts.say(text)
-
-    return jsonify({"status": "Spoken"}), 200
+    return {"status": "Beeped"}
 
 
-@app.route("/play", methods=["POST"])
-def play():
-    print("Request received!")
+@app.post("/speak")
+async def speak(request: SpeakRequest):
+    tts.say(request.text)
+    return {"status": "Spoken"}
 
-    if "audio" not in request.files:
-        return jsonify({"error": "Attach audio to 'audio' field in file form"}), 400
 
-    f = request.files["audio"]
+@app.post("/play")
+async def play(audio: UploadFile = File(...)):
+    if not allowed_file(audio.filename):
+        raise HTTPException(status_code=400, detail="File type not allowed")
 
-    if f.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    filename = os.path.join(TEMP_DIR, audio.filename)
+    with open(filename, "wb") as f:
+        f.write(await audio.read())
 
-    if f and allowed_file(f.filename):
-        filename = secure_filename(f.filename)
-        filepath = os.path.join(TEMP_DIR, filename)
-        f.save(filepath)
-
-        speaker.play(filepath)
-
-        return jsonify({"status": "Audio played successfully"}), 200
-
-    return jsonify({"error": "File type not allowed"}), 400
+    speaker.play(filename)
+    return {"status": "Audio played successfully"}
