@@ -1,7 +1,11 @@
-.ignore/
-
-# Python stuff
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
 venv/
-env/
-formatvenv/
-
+.ruff_cache/
+.pytest_cache/
+temp/
+.DS_Store
