@@ -7,5 +7,6 @@ build/
 venv/
 .ruff_cache/
 .pytest_cache/
+.vscode/
 temp/
 .DS_Store

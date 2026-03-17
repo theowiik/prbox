@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .config import DISPLAY_MODE
+from .config import DISPLAY_HEIGHT, DISPLAY_MODE, DISPLAY_WIDTH
 from .display.dev import DevDisplay
 from .routers import display as display_router
 
@@ -16,11 +16,11 @@ async def lifespan(app: FastAPI):
     if DISPLAY_MODE == "matrix":
         from .display.matrix import MatrixDisplay
 
-        app.state.display = MatrixDisplay()
+        app.state.display = MatrixDisplay(DISPLAY_WIDTH, DISPLAY_HEIGHT)
     else:
-        app.state.display = DevDisplay()
+        app.state.display = DevDisplay(DISPLAY_WIDTH, DISPLAY_HEIGHT)
 
-    logger.info("Display mode: %s", DISPLAY_MODE)
+    logger.info("Display mode: %s (%dx%d)", DISPLAY_MODE, DISPLAY_WIDTH, DISPLAY_HEIGHT)
     yield
 
 

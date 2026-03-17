@@ -13,8 +13,8 @@ def _hex_to_rgb(hex_code: str) -> tuple[int, int, int]:
 class DevDisplay:
     """Development display that prints to console and exposes state for web preview."""
 
-    def __init__(self) -> None:
-        self._state = DisplayState()
+    def __init__(self, width: int = 32, height: int = 8) -> None:
+        self._state = DisplayState(width=width, height=height)
 
     def show_text(self, text: str, color: str = "#00FF00") -> None:
         self._state.text = text

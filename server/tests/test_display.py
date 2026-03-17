@@ -17,6 +17,8 @@ def test_get_display_state(client):
     assert data["text"] == ""
     assert data["color"] == "#00FF00"
     assert data["brightness"] == 1.0
+    assert data["width"] == 32
+    assert data["height"] == 8
 
 
 def test_show_text(client):
