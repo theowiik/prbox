@@ -62,3 +62,24 @@ def test_preview_page(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "prbox" in response.text
+
+
+def test_get_weather(client):
+    response = client.get("/api/sources/weather")
+    assert response.status_code == 200
+    data = response.json()
+    assert "city" in data
+    assert "temp" in data
+    assert "condition" in data
+    assert "display_text" in data
+    assert "display_color" in data
+
+
+def test_push_weather_to_display(client):
+    weather = client.get("/api/sources/weather").json()
+    client.post(
+        "/api/display/text",
+        json={"text": weather["display_text"], "color": weather["display_color"]},
+    )
+    state = client.get("/api/display").json()
+    assert state["text"] == weather["display_text"]

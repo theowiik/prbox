@@ -19,8 +19,6 @@ Open http://localhost:8000 for the web preview, or `/docs` for API docs.
 
 ## Configuration
 
-Set environment variables to configure:
-
 - `PRBOX_DISPLAY_MODE` — `dev` (default) or `matrix`
 - `PRBOX_DISPLAY_WIDTH` — matrix width in pixels (default: 32)
 - `PRBOX_DISPLAY_HEIGHT` — matrix height in pixels (default: 8)

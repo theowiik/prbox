@@ -23,8 +23,11 @@ server/                        # FastAPI backend (uv-managed, hatchling build)
 │   │   ├── base.py            # Display protocol + DisplayState pydantic model
 │   │   ├── dev.py             # DevDisplay — console output + in-memory state for web preview
 │   │   └── matrix.py          # MatrixDisplay — Raspberry Pi LED matrix (placeholder)
+│   ├── sources/               # Event sources that feed the display
+│   │   └── weather.py         # MockWeather — time-seeded fake weather data
 │   └── routers/
-│       └── display.py         # API routes (/api/display/*) + inline HTML preview page
+│       ├── display.py         # API routes (/api/display/*) + inline HTML dashboard
+│       └── sources.py         # API routes (/api/sources/*)
 └── tests/
     └── test_display.py        # API integration tests using FastAPI TestClient
 assets/                        # Project assets (logo, diagrams)
@@ -43,6 +46,8 @@ New display backends implement the `Display` protocol methods: `show_text`, `cle
 `DisplayState` (pydantic model in `base.py`) is the shared state representation returned by `get_state()` and serialized directly as the API response. Includes text, color, brightness, and matrix dimensions (width/height).
 
 **App lifecycle** — the display instance is created in the FastAPI lifespan handler (`app.py`) and stored on `app.state.display`. The active backend and matrix dimensions are selected at startup via env vars (`PRBOX_DISPLAY_MODE`, `PRBOX_DISPLAY_WIDTH`, `PRBOX_DISPLAY_HEIGHT`). Routers access the display via a `Depends(_get_display)` dependency that reads from `request.app.state`.
+
+**Event sources** — pluggable data sources (`sources/`) that produce content for the display. Currently only `MockWeather` (time-seeded random weather that changes every 5 minutes). Sources expose data via `/api/sources/*` endpoints; the frontend pushes source data to the display via `/api/display/text`. New sources just need a data class and a router endpoint.
 
 **Web preview** — `GET /` serves an inline HTML page (string constant in `routers/display.py`) that polls `GET /api/display` every 500ms and renders a pixel-accurate LED matrix grid using Canvas. Characters are rendered with a built-in 5x7 bitmap font. The grid adapts to the configured matrix dimensions. API docs are auto-generated at `/docs`.
 

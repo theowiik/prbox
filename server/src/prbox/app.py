@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from .config import DISPLAY_HEIGHT, DISPLAY_MODE, DISPLAY_WIDTH
 from .display.dev import DevDisplay
 from .routers import display as display_router
+from .routers import sources as sources_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,3 +27,4 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="prbox", lifespan=lifespan)
 app.include_router(display_router.router)
+app.include_router(sources_router.router)
