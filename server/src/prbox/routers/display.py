@@ -167,7 +167,7 @@ async def stream_frames(websocket: WebSocket) -> None:
         while True:
             frame = await queue.get()
             await websocket.send_bytes(frame)
-    except (WebSocketDisconnect, asyncio.CancelledError):
+    except WebSocketDisconnect, asyncio.CancelledError:
         pass
     except RuntimeError:
         # Socket closed underneath us mid-send; nothing to clean up but the queue.

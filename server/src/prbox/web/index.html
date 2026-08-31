@@ -5,180 +5,234 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>prbox</title>
 <style>
+/* Teenage-engineering-ish: warm grey faceplate, hairline rules, square
+   corners, tiny uppercase labels, one orange accent and nothing else. */
 :root{
-  --bg:#0d0d14;--surface:#16161f;--surface-2:#1e1e2b;--border:#2a2a3a;
-  --text:#ececf2;--dim:#8a8a9c;--accent:#6366f1;--ok:#22c55e;--bad:#ef4444;--r:14px;
+  --paper:#d6d4cc;
+  --panel:#f3f2ed;
+  --ink:#17160f;
+  --dim:#8b887c;
+  --rule:#17160f;
+  --accent:#ff4f00;
+  --screen:#050507;
 }
 *{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
 body{
-  background:radial-gradient(1200px 600px at 50% -10%,#1a1a2e,var(--bg));
-  color:var(--text);min-height:100vh;padding:2rem 1.5rem 3rem;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  font-size:13px;
+  line-height:1.35;
+  padding:24px 16px 48px;
+  text-transform:lowercase;
+  -webkit-font-smoothing:antialiased;
 }
-.wrap{max-width:880px;margin:0 auto}
-header{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1.5rem}
-h1{font-size:1.4rem;font-weight:650;letter-spacing:-.02em}
-.sub{color:var(--dim);font-size:.8rem}
-.status{margin-left:auto;display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--dim)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--bad);transition:background .2s}
-.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
 
-.stage{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
-  padding:1.25rem;margin-bottom:1rem;
+/* The whole page is one faceplate; inner rules are single hairlines. */
+.unit{
+  max-width:1060px;margin:0 auto;
+  background:var(--panel);
+  border:1px solid var(--rule);
 }
-.stage-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem}
-.stage-head h2{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.meta{margin-left:auto;font-size:.7rem;color:var(--dim);font-variant-numeric:tabular-nums}
-#screen{
-  display:block;width:100%;height:auto;image-rendering:pixelated;
-  background:#050507;border-radius:8px;
-}
-.controls{display:flex;align-items:center;gap:.75rem;margin-top:.9rem}
-.controls label{font-size:.72rem;color:var(--dim);white-space:nowrap}
-input[type="range"]{flex:1;accent-color:var(--accent)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
-.card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r);padding:1.1rem;
+/* --- title bar --- */
+.bar{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;
+  border-bottom:1px solid var(--rule);
 }
-.card-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem}
-.card-head h2{font-size:.85rem;font-weight:600}
-.badge{
-  font-size:.58rem;background:var(--surface-2);color:var(--dim);
-  padding:.15rem .45rem;border-radius:5px;text-transform:uppercase;
-  letter-spacing:.06em;margin-left:auto;
+.mark{
+  width:13px;height:13px;background:var(--accent);
+  border:1px solid var(--rule);flex:none;
 }
-.w-temp{font-size:2.4rem;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
-.w-cond{font-size:.85rem;margin-top:.15rem}
-.w-rows{margin-top:.6rem;display:grid;gap:.2rem}
-.w-rows div{display:flex;justify-content:space-between;font-size:.72rem;color:var(--dim)}
-.actions{display:flex;align-items:center;gap:.6rem;margin-top:.9rem;flex-wrap:wrap}
+.bar h1{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.bar .sub{color:var(--dim);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.state{
+  margin-left:auto;display:flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.led{width:7px;height:7px;background:var(--dim);border:1px solid var(--rule);flex:none}
+.led.on{background:var(--accent)}
+
+/* --- screen --- */
+/* Stacked by default (preview first, which is the DOM order); side by side
+   on wide screens with the modes on the left and the panel on the right.
+   Grid placement rather than reordering, so the mobile order stays natural. */
+.split{display:grid}
+.screen{padding:12px;border-bottom:1px solid var(--rule)}
+.screen-head{display:flex;align-items:baseline;margin-bottom:8px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.tag b{color:var(--ink);font-weight:400}
+.readout{margin-left:auto;font-size:10px;letter-spacing:.08em;color:var(--dim)}
+.bezel{background:var(--screen);border:1px solid var(--rule);padding:8px;line-height:0}
+#screen{display:block;width:100%;height:auto;image-rendering:pixelated}
+
+.bright{display:flex;align-items:center;gap:10px;margin-top:10px}
+.bright label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);flex:none}
+
+/* --- module grid: borders collapse into single hairlines --- */
+.modules{display:grid;grid-template-columns:repeat(2,1fr)}
+.mod{padding:12px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.mod:nth-child(2n){border-right:0}
+.mod:nth-last-child(-n+2){border-bottom:0}
+@media (max-width:620px){
+  .modules{grid-template-columns:1fr}
+  .mod{border-right:0}
+  .mod:nth-last-child(-n+2){border-bottom:1px solid var(--rule)}
+  .mod:last-child{border-bottom:0}
+}
+@media (min-width:900px){
+  .split{grid-template-columns:1fr 1fr}
+  .modules{grid-column:1;grid-row:1}
+  /* The divider between the halves is the screen's left edge; its bottom
+     border would otherwise draw a stray line across the middle. */
+  .screen{grid-column:2;grid-row:1;border-bottom:0;border-left:1px solid var(--rule)}
+}
+.mod-head{display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.idx{
+  font-size:9px;letter-spacing:.06em;color:var(--panel);background:var(--ink);
+  padding:1px 4px;flex:none;
+}
+.mod-head h2{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.mod-head .note{margin-left:auto;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+
+/* --- weather --- */
+.temp{font-size:38px;font-weight:700;line-height:.95;letter-spacing:-.04em}
+.cond{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-top:4px}
+.rows{margin-top:10px;border-top:1px solid var(--rule)}
+.rows div{
+  display:flex;justify-content:space-between;
+  font-size:10px;letter-spacing:.06em;padding:3px 0;
+  border-bottom:1px solid rgba(23,22,15,.14);
+}
+.rows div:last-child{border-bottom:0}
+.rows span:first-child{color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+
+/* --- controls --- */
+.row{display:flex;gap:6px;align-items:center;margin-top:8px}
 .field{
-  width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
-  padding:.5rem .7rem;border-radius:9px;font-size:.85rem;font-family:inherit;
+  width:100%;background:transparent;border:1px solid var(--rule);color:var(--ink);
+  padding:6px 8px;font:inherit;font-size:12px;border-radius:0;
+  text-transform:none;
 }
-.field:focus{outline:none;border-color:var(--accent)}
-.row{display:flex;gap:.5rem;align-items:center;margin-top:.7rem}
-input[type="color"]{width:34px;height:34px;border:1px solid var(--border);background:none;cursor:pointer;border-radius:8px;padding:2px}
+.field::placeholder{color:var(--dim)}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+input[type="color"]{
+  width:30px;height:30px;padding:2px;flex:none;
+  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+}
 .btn{
-  background:var(--accent);color:#fff;border:none;padding:.45rem .9rem;
-  border-radius:9px;cursor:pointer;font-size:.78rem;font-family:inherit;
-  transition:filter .15s;white-space:nowrap;
+  font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--ink);color:var(--panel);border:1px solid var(--rule);
+  padding:6px 12px;border-radius:0;cursor:pointer;white-space:nowrap;
 }
-.btn:hover{filter:brightness(1.15)}
-.btn:active{filter:brightness(.9)}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim)}
-.btn-ghost:hover{border-color:var(--dim);color:var(--text);filter:none}
-.toggle{display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--dim);cursor:pointer}
-.toggle input{accent-color:var(--accent)}
-.slider-row{display:flex;align-items:center;gap:.6rem;margin-top:.55rem}
-.slider-row label{font-size:.7rem;color:var(--dim);width:4.5rem}
-.slider-row input[type=range]{flex:1;accent-color:var(--accent)}
-.slider-row span{font-size:.7rem;color:var(--dim);width:2.2rem;text-align:right;font-variant-numeric:tabular-nums}
+.btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--panel);border-color:var(--rule)}
+
+.check{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer}
+.check input{
+  appearance:none;width:13px;height:13px;margin:0;flex:none;
+  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+}
+.check input:checked{background:var(--accent)}
+
+/* --- sliders: 1px track, hard square thumb --- */
+input[type="range"]{
+  appearance:none;flex:1;height:14px;background:transparent;cursor:pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track{height:1px;background:var(--rule)}
+input[type="range"]::-moz-range-track{height:1px;background:var(--rule)}
+input[type="range"]::-webkit-slider-thumb{
+  appearance:none;width:8px;height:14px;margin-top:-6.5px;
+  background:var(--ink);border:0;border-radius:0;
+}
+input[type="range"]::-moz-range-thumb{width:8px;height:14px;background:var(--ink);border:0;border-radius:0}
+input[type="range"]:hover::-webkit-slider-thumb{background:var(--accent)}
+input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
+
+.knob{display:flex;align-items:center;gap:9px;margin-top:5px}
+.knob label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);width:52px;flex:none}
+.knob span{font-size:10px;color:var(--dim);width:30px;text-align:right;flex:none}
+.acts{display:flex;align-items:center;gap:8px;margin-top:11px}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header>
-  <h1>prbox</h1>
-  <span class="sub">Event display box</span>
-  <span class="status"><span class="dot" id="dot"></span><span id="conn">connecting</span></span>
-</header>
+<div class="unit">
 
-<section class="stage">
-  <div class="stage-head">
-    <h2>Live panel</h2>
-    <span class="meta" id="meta">—</span>
+  <div class="bar">
+    <span class="mark"></span>
+    <h1>prbox</h1>
+    <span class="sub">event display</span>
+    <span class="state"><span class="led" id="dot"></span><span id="conn">connecting</span></span>
   </div>
-  <canvas id="screen"></canvas>
-  <div class="controls">
-    <label for="b">Brightness</label>
-    <input type="range" id="b" min="0" max="100" value="100">
-    <span class="meta" id="bval">100%</span>
-    <button class="btn btn-ghost" onclick="post('/clear')">Clear</button>
-  </div>
-</section>
 
-<div class="grid">
-  <div class="card">
-    <div class="card-head"><h2>Weather</h2><span class="badge">Mock</span></div>
-    <div class="w-temp" id="w-temp">—</div>
-    <div class="w-cond" id="w-cond"></div>
-    <div class="w-rows">
-      <div><span>City</span><span id="w-city">—</span></div>
-      <div><span>Feels like</span><span id="w-feels">—</span></div>
-      <div><span>Humidity</span><span id="w-hum">—</span></div>
-      <div><span>Wind</span><span id="w-wind">—</span></div>
+  <div class="split">
+  <div class="screen">
+    <div class="screen-head">
+      <span class="tag">out <b>/ live panel</b></span>
+      <span class="readout mono" id="meta">&mdash;</span>
     </div>
-    <div class="actions">
-      <button class="btn" onclick="pushWeather()">Push to display</button>
-      <label class="toggle"><input type="checkbox" id="w-auto"> Auto</label>
+    <div class="bezel"><canvas id="screen"></canvas></div>
+    <div class="bright">
+      <label for="b">bright</label>
+      <input type="range" id="b" min="0" max="100" value="100">
+      <span class="readout mono" id="bval">100%</span>
+      <button class="btn ghost" onclick="post('/clear')">clear</button>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Text</h2></div>
-    <input class="field" type="text" id="t" placeholder="Long text scrolls…" maxlength="512">
-    <div class="row">
-      <input type="color" id="c" value="#00ff00">
-      <button class="btn" onclick="sendText()">Send</button>
-      <button class="btn btn-ghost" onclick="sendSolid()">Fill</button>
-    </div>
-  </div>
+  <div class="modules">
 
-  <div class="card">
-    <div class="card-head"><h2>Game of Life</h2></div>
-    <div class="slider-row">
-      <label for="l-speed">Gen/s</label>
-      <input type="range" id="l-speed" min="1" max="200" value="60">
-      <span id="l-speed-v">6.0</span>
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">01</span><h2>weather</h2><span class="note">mock</span></div>
+      <div class="temp mono" id="w-temp">&mdash;</div>
+      <div class="cond" id="w-cond"></div>
+      <div class="rows">
+        <div><span>city</span><span id="w-city">&mdash;</span></div>
+        <div><span>feels</span><span class="mono" id="w-feels">&mdash;</span></div>
+        <div><span>humid</span><span class="mono" id="w-hum">&mdash;</span></div>
+        <div><span>wind</span><span class="mono" id="w-wind">&mdash;</span></div>
+      </div>
+      <div class="acts">
+        <button class="btn" onclick="pushWeather()">send</button>
+        <label class="check"><input type="checkbox" id="w-auto"> auto</label>
+      </div>
     </div>
-    <div class="slider-row">
-      <label for="l-density">Density</label>
-      <input type="range" id="l-density" min="5" max="95" value="35">
-      <span id="l-density-v">0.35</span>
-    </div>
-    <div class="slider-row">
-      <label for="l-hue">Hue</label>
-      <input type="range" id="l-hue" min="0" max="100" value="45">
-      <span id="l-hue-v">0.45</span>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="sendLife()">Start</button>
-    </div>
-  </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Rainbow blobs</h2></div>
-    <div class="slider-row">
-      <label for="r-speed">Speed</label>
-      <input type="range" id="r-speed" min="0" max="60" value="8">
-      <span id="r-speed-v">0.08</span>
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">02</span><h2>text</h2></div>
+      <input class="field" type="text" id="t" placeholder="long text scrolls" maxlength="512">
+      <div class="row">
+        <input type="color" id="c" value="#00ff00">
+        <button class="btn" onclick="sendText()">send</button>
+        <button class="btn ghost" onclick="sendSolid()">fill</button>
+      </div>
     </div>
-    <div class="slider-row">
-      <label for="r-blobs">Blobs</label>
-      <input type="range" id="r-blobs" min="0" max="12" value="4">
-      <span id="r-blobs-v">4</span>
+
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">03</span><h2>life</h2></div>
+      <div class="knob"><label for="l-speed">gen/s</label><input type="range" id="l-speed" min="1" max="200" value="60"><span class="mono" id="l-speed-v">6.0</span></div>
+      <div class="knob"><label for="l-density">density</label><input type="range" id="l-density" min="5" max="95" value="35"><span class="mono" id="l-density-v">0.35</span></div>
+      <div class="knob"><label for="l-hue">hue</label><input type="range" id="l-hue" min="0" max="100" value="45"><span class="mono" id="l-hue-v">0.45</span></div>
+      <div class="acts"><button class="btn" onclick="sendLife()">run</button></div>
     </div>
-    <div class="slider-row">
-      <label for="r-noise">Noise</label>
-      <input type="range" id="r-noise" min="0" max="100" value="25">
-      <span id="r-noise-v">0.25</span>
+
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">04</span><h2>rainbow</h2></div>
+      <div class="knob"><label for="r-speed">speed</label><input type="range" id="r-speed" min="0" max="60" value="8"><span class="mono" id="r-speed-v">0.08</span></div>
+      <div class="knob"><label for="r-blobs">blobs</label><input type="range" id="r-blobs" min="0" max="12" value="4"><span class="mono" id="r-blobs-v">4</span></div>
+      <div class="knob"><label for="r-noise">noise</label><input type="range" id="r-noise" min="0" max="100" value="25"><span class="mono" id="r-noise-v">0.25</span></div>
+      <div class="knob"><label for="r-sat">sat</label><input type="range" id="r-sat" min="0" max="100" value="100"><span class="mono" id="r-sat-v">1.00</span></div>
+      <div class="acts"><button class="btn" onclick="sendRainbow()">run</button></div>
     </div>
-    <div class="slider-row">
-      <label for="r-sat">Sat</label>
-      <input type="range" id="r-sat" min="0" max="100" value="100">
-      <span id="r-sat-v">1.00</span>
-    </div>
-    <div class="actions">
-      <button class="btn" onclick="sendRainbow()">Start</button>
-    </div>
+
+  </div>
   </div>
 </div>
-</div>
-
 <script>
 'use strict';
 const API = '/api/display';
@@ -235,7 +289,7 @@ function paint() {
       // Unlit LEDs stay visibly dark grey so the panel grid reads as hardware.
       ctx.beginPath();
       ctx.arc(cx, cy, rad, 0, 6.2832);
-      ctx.fillStyle = lit ? `rgb(${r},${g},${b})` : '#14141c';
+      ctx.fillStyle = lit ? `rgb(${r},${g},${b})` : '#1c1b17';
       ctx.fill();
 
       if (lit > 90) {

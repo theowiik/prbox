@@ -48,7 +48,7 @@ class MatrixOptions:
     brightness: int = 100
 
     @classmethod
-    def from_env(cls) -> "MatrixOptions":
+    def from_env(cls) -> MatrixOptions:
         return cls(
             chain_length=_int("PRBOX_MATRIX_CHAIN", cls.chain_length),
             parallel=_int("PRBOX_MATRIX_PARALLEL", cls.parallel),
@@ -74,7 +74,7 @@ class Settings:
     matrix: MatrixOptions = field(default_factory=MatrixOptions)
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         settings = cls(
             mode=os.getenv("PRBOX_DISPLAY_MODE", cls.mode).strip().lower(),
             width=_int("PRBOX_DISPLAY_WIDTH", cls.width),
