@@ -27,6 +27,7 @@ same font, same scrolling, same gamma.
 | --- | --- | --- |
 | Text | `POST /api/display/text` | Centred when it fits, smoothly scrolled when it doesn't |
 | Rainbow | `POST /api/display/rainbow` | Hue gradient with drifting blobs and value noise |
+| Life | `POST /api/display/life` | Conway's Game of Life, toroidal, age-coloured, auto-reseeding |
 | Solid | `POST /api/display/solid` | Flat fill |
 | Blank | `POST /api/display/clear` | Off |
 
@@ -41,7 +42,7 @@ on the Pi.
 | --- | --- | --- |
 | `PRBOX_DISPLAY_MODE` | `dev` | `dev` or `matrix` |
 | `PRBOX_DISPLAY_WIDTH` | `32` | Panel width in pixels |
-| `PRBOX_DISPLAY_HEIGHT` | `8` | Panel height in pixels |
+| `PRBOX_DISPLAY_HEIGHT` | `32` | Panel height in pixels |
 | `PRBOX_FPS` | `30` | Render loop frame rate (1–120) |
 | `PRBOX_GAMMA` | `2.2` | Gamma correction for LED brightness |
 | `PRBOX_CITY` | `Stockholm` | City for the weather source |

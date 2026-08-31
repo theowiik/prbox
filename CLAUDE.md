@@ -28,7 +28,8 @@ server/                        # FastAPI backend (uv-managed, hatchling build)
 │   │   ├── frame.py           # Frame buffer, colour conversion, subpixel text drawing
 │   │   ├── font.py            # 5x7 bitmap font (single source of truth)
 │   │   ├── noise.py           # ValueNoise — animated value noise + fbm
-│   │   └── scenes.py          # BlankScene, TextScene, RainbowScene, SolidScene
+│   │   ├── life.py            # Conway's Game of Life rules (no rendering)
+│   │   └── scenes.py          # Blank/Text/Rainbow/Life/Solid scenes
 │   ├── display/               # Frame sinks
 │   │   ├── base.py            # Display protocol + DisplayState pydantic model
 │   │   ├── dev.py             # DevDisplay — holds latest frame, optional TTY preview
@@ -44,6 +45,7 @@ server/                        # FastAPI backend (uv-managed, hatchling build)
     ├── conftest.py            # TestClient + settings fixtures
     ├── test_api.py            # HTTP + WebSocket integration tests
     ├── test_render.py         # Frame, font, noise, scene unit tests
+    ├── test_life.py           # Life rules, LifeScene, and its endpoint
     ├── test_engine.py         # Render loop and controller tests
     ├── test_config.py         # Env parsing and validation
     └── test_sources.py        # Weather source tests
@@ -68,6 +70,15 @@ result to the display backend, and fans it out to WebSocket subscribers. Even
 pacing matters more than raw frame rate for how smooth the panel looks, so the
 loop tracks absolute deadlines and resyncs rather than burst-catching-up when
 it falls behind. A failing display backend is logged, not fatal.
+
+**Stateful scenes** — `LifeScene` is the exception that proves the rule. Life
+is inherently stateful, but it still presents a pure `render(frame, t)`: the
+generation number is derived from `t`, and rewinding `t` replays from the seed
+deterministically. Generations tick a few times a second while the loop runs at
+30fps, so births fade in and deaths fade out across each tick. Small boards
+stagnate quickly, so a board that repeats a recent state or dies out is
+reseeded. The rules live in `render/life.py` with no rendering in them, so they
+can be tested against gliders and blinkers directly.
 
 **Scenes** — a `Scene` is anything with a `name` and `render(frame, t)`, where
 `t` is seconds since the scene became active (Protocol, structural subtyping).
@@ -109,6 +120,7 @@ pushes its payload to `/api/display/text`.
 - `GET /api/display/frame` — latest frame as base64 RGB (non-WebSocket fallback)
 - `POST /api/display/text` — `{"text": "...", "color": "#RRGGBB"}`
 - `POST /api/display/rainbow` — `{"speed", "blobs", "noise", "saturation"}`
+- `POST /api/display/life` — `{"speed", "density", "hue"}`
 - `POST /api/display/solid` — `{"color": "#RRGGBB"}`
 - `POST /api/display/clear`
 - `POST /api/display/brightness` — `{"brightness": 0.0-1.0}`
