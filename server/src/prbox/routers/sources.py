@@ -1,12 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request
 
-from ..sources.weather import MockWeather
+from ..sources.weather import MockWeather, WeatherData
 
-router = APIRouter(prefix="/api/sources")
-
-_weather = MockWeather()
+router = APIRouter(prefix="/api/sources", tags=["sources"])
 
 
-@router.get("/weather")
-def get_weather():
-    return _weather.get()
+def _get_weather(request: Request) -> MockWeather:
+    return request.app.state.weather
+
+
+@router.get("/weather", summary="Current (mock) weather")
+def get_weather(weather: MockWeather = Depends(_get_weather)) -> WeatherData:
+    return weather.get()

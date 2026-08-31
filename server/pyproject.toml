@@ -1,12 +1,18 @@
 [project]
 name = "prbox"
-version = "0.1.0"
+version = "0.2.0"
 description = "A fun little event display box with LED matrix"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
+    "websockets>=13.0",
 ]
+
+[project.optional-dependencies]
+# Installed on the Raspberry Pi only. The `rgbmatrix` module itself is built
+# from hzeller/rpi-rgb-led-matrix and is not available on PyPI.
+pi = ["pillow>=10.0"]
 
 [dependency-groups]
 dev = [
@@ -27,8 +33,12 @@ line-length = 88
 src = ["src"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E501"]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency injection is built on calls in argument defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-q"
