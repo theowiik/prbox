@@ -173,3 +173,34 @@ def test_fbm_in_range():
     assert all(
         0.0 <= noise.fbm(i * 0.3, i * 0.7, i * 0.2, octaves=3) <= 1.0 for i in range(50)
     )
+
+
+@pytest.mark.parametrize(("w", "h"), [(32, 32), (64, 32), (32, 8)])
+def test_rainbow_blobs_are_round_at_any_aspect_ratio(w, h):
+    """Blobs must not stretch on non-square panels — LEDs are square pixels.
+
+    Rendering at saturation 0 makes every pixel grey, so the red channel is a
+    direct readout of the blob field with the hue gradient factored out.
+    """
+    frame = Frame(w, h)
+    RainbowScene(blobs=1, noise_amount=0.0, saturation=0.0, seed=4).render(frame, 0.0)
+
+    values = [frame.buf[(y * w + x) * 3] for y in range(h) for x in range(w)]
+    peak = max(values)
+    core = [
+        (x, y) for y in range(h) for x in range(w) if values[y * w + x] > peak * 0.9
+    ]
+    assert core, "blob should have a bright core"
+
+    xs = [p[0] for p in core]
+    ys = [p[1] for p in core]
+    width = max(xs) - min(xs) + 1
+    height = max(ys) - min(ys) + 1
+    assert abs(width - height) <= 1, f"blob is {width}x{height}, not round"
+
+
+def test_rainbow_blobs_fit_within_a_short_panel():
+    """Blob radius keys off the short edge, so it cannot exceed panel height."""
+    scene = RainbowScene(blobs=4, seed=2)
+    # Largest radius fraction the constructor can produce is 0.18 + 0.22.
+    assert max(b[4] for b in scene._blobs) <= 0.40

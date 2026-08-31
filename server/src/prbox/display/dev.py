@@ -20,7 +20,7 @@ class DevDisplay:
     def __init__(
         self,
         width: int = 32,
-        height: int = 8,
+        height: int = 32,
         tty_preview: bool = False,
         tty_fps: int = 10,
     ) -> None:

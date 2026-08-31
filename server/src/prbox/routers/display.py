@@ -55,6 +55,18 @@ class RainbowRequest(BaseModel):
     saturation: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
+class LifeRequest(BaseModel):
+    speed: float = Field(
+        default=6.0, ge=0.5, le=30.0, description="Generations per second"
+    )
+    density: float = Field(
+        default=0.35, ge=0.05, le=0.95, description="Initial live-cell fraction"
+    )
+    hue: float = Field(
+        default=0.45, ge=0.0, le=1.0, description="Base hue for young cells"
+    )
+
+
 class SetBrightnessRequest(BaseModel):
     brightness: float = Field(ge=0.0, le=1.0)
 
@@ -86,6 +98,14 @@ def show_rainbow(
         noise=body.noise,
         saturation=body.saturation,
     )
+    return Ok()
+
+
+@router.post("/api/display/life", tags=["display"], summary="Run Game of Life")
+def show_life(
+    body: LifeRequest, controller: DisplayController = Depends(_get_controller)
+) -> Ok:
+    controller.show_life(speed=body.speed, density=body.density, hue=body.hue)
     return Ok()
 
 

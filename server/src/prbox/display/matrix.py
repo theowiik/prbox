@@ -21,7 +21,7 @@ class MatrixDisplay:
     def __init__(
         self,
         width: int = 32,
-        height: int = 8,
+        height: int = 32,
         *,
         chain_length: int = 1,
         parallel: int = 1,

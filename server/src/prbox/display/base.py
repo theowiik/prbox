@@ -11,7 +11,7 @@ class DisplayState(BaseModel):
     color: str = "#00FF00"
     brightness: float = Field(default=1.0, ge=0.0, le=1.0)
     width: int = 32
-    height: int = 8
+    height: int = 32
     fps: int = 30
 
 

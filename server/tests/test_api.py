@@ -8,7 +8,7 @@ def test_get_display_state(client):
         "color": "#00FF00",
         "brightness": 1.0,
         "width": 32,
-        "height": 8,
+        "height": 32,
         "fps": 60,
     }
 
@@ -77,11 +77,11 @@ def test_invalid_brightness_too_low(client):
 
 def test_frame_endpoint_shape(client):
     data = client.get("/api/display/frame").json()
-    assert data["width"] == 32 and data["height"] == 8
+    assert data["width"] == 32 and data["height"] == 32
 
     import base64
 
-    assert len(base64.b64decode(data["frame"])) == 32 * 8 * 3
+    assert len(base64.b64decode(data["frame"])) == 32 * 32 * 3
 
 
 def test_preview_page(client):
@@ -93,6 +93,6 @@ def test_preview_page(client):
 def test_websocket_streams_frames(client):
     with client.websocket_connect("/ws/display") as ws:
         hello = ws.receive_json()
-        assert hello == {"type": "hello", "width": 32, "height": 8, "fps": 60}
+        assert hello == {"type": "hello", "width": 32, "height": 32, "fps": 60}
         frame = ws.receive_bytes()
-        assert len(frame) == 32 * 8 * 3
+        assert len(frame) == 32 * 32 * 3

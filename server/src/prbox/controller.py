@@ -7,7 +7,7 @@ is showing, which scene is active) that the API reports back.
 from .display.base import DisplayState
 from .render.engine import RenderEngine
 from .render.frame import hex_to_rgb
-from .render.scenes import BlankScene, RainbowScene, SolidScene, TextScene
+from .render.scenes import BlankScene, LifeScene, RainbowScene, SolidScene, TextScene
 
 
 class DisplayController:
@@ -52,6 +52,16 @@ class DisplayController:
                 saturation=saturation,
             )
         )
+
+    def show_life(
+        self,
+        speed: float = 6.0,
+        density: float = 0.35,
+        hue: float = 0.45,
+    ) -> None:
+        self._text = ""
+        self._scene_name = "life"
+        self._engine.set_scene(LifeScene(speed=speed, density=density, hue=hue))
 
     def clear(self) -> None:
         self._text = ""

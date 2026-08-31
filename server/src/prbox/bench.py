@@ -9,7 +9,7 @@ import time
 
 from .config import Settings
 from .render.frame import Frame
-from .render.scenes import RainbowScene, TextScene
+from .render.scenes import LifeScene, RainbowScene, TextScene
 
 
 def measure(scene, frame: Frame, seconds: float = 2.0) -> float:
@@ -37,6 +37,8 @@ def main() -> None:
         ("rainbow (4 blobs)", RainbowScene(blobs=4)),
         ("rainbow (8 blobs)", RainbowScene(blobs=8)),
         ("rainbow (no noise)", RainbowScene(blobs=4, noise_amount=0.0)),
+        ("life (6 gen/s)", LifeScene(speed=6.0, seed=1)),
+        ("life (30 gen/s)", LifeScene(speed=30.0, seed=1)),
     ]
     for label, scene in scenes:
         fps = measure(scene, frame)

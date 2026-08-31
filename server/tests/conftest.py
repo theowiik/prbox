@@ -8,7 +8,7 @@ from prbox.config import Settings
 @pytest.fixture
 def settings() -> Settings:
     # A small panel keeps per-frame work trivial so tests stay fast.
-    return Settings(mode="dev", width=32, height=8, fps=60)
+    return Settings(mode="dev", width=32, height=32, fps=60)
 
 
 @pytest.fixture

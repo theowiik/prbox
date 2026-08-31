@@ -1,11 +1,14 @@
 """Scenes: things that can draw themselves into a Frame over time."""
 
 import math
+import random
+from collections import deque
 from functools import lru_cache
 from typing import Protocol
 
 from .font import GLYPH_HEIGHT, text_width
 from .frame import RGB, Frame, hsv_to_rgb
+from .life import next_generation, population, random_board
 from .noise import ValueNoise
 
 
@@ -153,11 +156,14 @@ class RainbowScene:
         inv_h = 1.0 / max(h - 1, 1)
 
         # Resolve blob centres once per frame rather than once per pixel.
+        # Size blobs off the short edge so they stay on-panel at any aspect
+        # ratio; distances stay Euclidean, so blobs are round like the LEDs.
+        short_edge = w if w < h else h
         centres = [
             (
                 (0.5 + 0.42 * math.sin(t * fx * 6.283 + px)) * w,
                 (0.5 + 0.42 * math.cos(t * fy * 6.283 + py)) * h,
-                (radius * w) ** 2,
+                (radius * short_edge) ** 2,
             )
             for fx, fy, px, py, radius in self._blobs
         ]
@@ -186,7 +192,7 @@ class RainbowScene:
                 field = 0.0
                 for cx, cy, r2 in centres:
                     dx = x - cx
-                    dy = (y - cy) * 2.0  # Panels are wide; keep blobs round-ish.
+                    dy = y - cy
                     field += r2 / (dx * dx + dy * dy + r2 * 0.35)
 
                 if use_noise:
@@ -217,6 +223,173 @@ class RainbowScene:
                 i += 3
 
 
+#: Generations a cell is tracked for before its colour stops shifting.
+_MAX_AGE = 24
+#: Quantisation of the birth/death fade. 16 steps is smoother than LEDs resolve.
+_LIFE_LEVELS = 16
+
+
+class LifeScene:
+    """Conway's Game of Life, rendered with age colouring and soft transitions.
+
+    Life is stateful, unlike every other scene here, but it still presents the
+    same pure `render(frame, t)` interface: the generation number is derived
+    from `t`, and rewinding `t` replays deterministically from the seed. That
+    keeps it testable at arbitrary `t` and keeps the engine ignorant of the
+    difference.
+
+    Generations tick a few times a second, far slower than the 30fps render
+    loop, so cells fade in as they are born and fade out as they die. Without
+    that the panel would visibly stutter between discrete states.
+    """
+
+    name = "life"
+
+    #: Board hashes remembered when looking for a stalled simulation.
+    HISTORY = 24
+    #: Cap on generations simulated in one render, so a huge jump in `t` cannot
+    #: stall the loop. Mirrors the engine's own resync-instead-of-catch-up rule.
+    MAX_CATCHUP = 128
+
+    def __init__(
+        self,
+        speed: float = 6.0,
+        density: float = 0.35,
+        hue: float = 0.45,
+        hue_span: float = 0.35,
+        seed: int | None = None,
+    ) -> None:
+        self.speed = max(speed, 0.1)
+        self.density = min(max(density, 0.01), 0.95)
+        self.seed = seed
+
+        # Colour by age: newly born cells start at `hue`, long-lived colonies
+        # drift across `hue_span`, so structure is readable at a glance.
+        self._lut = [
+            bytes(
+                hsv_to_rgb(
+                    hue + hue_span * (age / _MAX_AGE),
+                    0.85,
+                    level / (_LIFE_LEVELS - 1),
+                )
+            )
+            for age in range(_MAX_AGE + 1)
+            for level in range(_LIFE_LEVELS)
+        ]
+
+        self._w = 0
+        self._h = 0
+        self._generation = 0
+        self._reseeds = 0
+
+    # -- simulation --------------------------------------------------------
+
+    def _reset(self, width: int, height: int) -> None:
+        """Restart from the scene's seed, so replaying `t` is deterministic."""
+        self._w = width
+        self._h = height
+        self._rng = random.Random(self.seed)
+        self._cells = random_board(width, height, self.density, self._rng)
+        self._age = bytearray(self._cells)
+        # The starting board counts as already established, so generation 0 is
+        # visible immediately. Fading it up from black would leave the panel
+        # dark at t=0, and the engine already crossfades scene entry anyway.
+        self._prev = bytearray(self._cells)
+        self._prev_age = bytearray(self._age)
+        self._history: deque[int] = deque(maxlen=self.HISTORY)
+        self._generation = 0
+
+    def _reseed(self) -> None:
+        """Drop a fresh random board in when the simulation stops being interesting.
+
+        Small boards reach a still life, a short oscillator or extinction within
+        a minute or so. Left alone the panel would just freeze, so a stalled
+        board is replaced. The RNG stream continues rather than restarting, so a
+        replay from `_reset` reproduces the same reseeds.
+        """
+        self._cells = random_board(self._w, self._h, self.density, self._rng)
+        self._age = bytearray(self._cells)
+        self._history.clear()
+        self._reseeds += 1
+
+    def _advance(self) -> None:
+        """Step one generation, tracking cell ages and watching for stagnation."""
+        self._prev = self._cells
+        self._prev_age = self._age
+
+        cells = next_generation(self._cells, self._w, self._h)
+        age = bytearray(len(cells))
+        old_age = self._age
+        for i, alive in enumerate(cells):
+            if alive:
+                a = old_age[i]
+                age[i] = a + 1 if a < _MAX_AGE else _MAX_AGE
+        self._cells = cells
+        self._age = age
+
+        if not population(cells):
+            self._reseed()
+            return
+        # A board state we have seen recently means a still life or a short
+        # oscillator — the pattern is finished evolving.
+        state = hash(bytes(cells))
+        if state in self._history:
+            self._reseed()
+        else:
+            self._history.append(state)
+
+    # -- rendering ---------------------------------------------------------
+
+    def render(self, frame: Frame, t: float) -> None:
+        if frame.width != self._w or frame.height != self._h:
+            self._reset(frame.width, frame.height)
+
+        exact = t * self.speed if t > 0.0 else 0.0
+        target = int(exact)
+
+        if target < self._generation:
+            # `t` went backwards (a test, or a scene restart) — replay.
+            self._reset(self._w, self._h)
+        steps = target - self._generation
+        if steps > self.MAX_CATCHUP:
+            self._reset(self._w, self._h)
+            steps = self.MAX_CATCHUP
+        for _ in range(steps):
+            self._advance()
+        self._generation = target
+
+        self._paint(frame, exact - target)
+
+    def _paint(self, frame: Frame, frac: float) -> None:
+        """Draw the board, crossfading births and deaths across the generation."""
+        buf = frame.buf
+        cells = self._cells
+        prev = self._prev
+        age = self._age
+        prev_age = self._prev_age
+        lut = self._lut
+        top = _LIFE_LEVELS - 1
+        born = int(frac * top)
+        dying = top - born
+
+        i = 0
+        for idx, alive in enumerate(cells):
+            was = prev[idx]
+            if alive:
+                # Established cells stay lit; newborns fade up over the tick.
+                level = top if was else born
+                cell_age = age[idx]
+            elif was:
+                level = dying
+                cell_age = prev_age[idx]
+            else:
+                buf[i] = buf[i + 1] = buf[i + 2] = 0
+                i += 3
+                continue
+            buf[i : i + 3] = lut[cell_age * _LIFE_LEVELS + level]
+            i += 3
+
+
 class SolidScene:
     """A single flat colour across the whole panel."""
 
@@ -231,6 +404,7 @@ class SolidScene:
 
 __all__ = [
     "BlankScene",
+    "LifeScene",
     "RainbowScene",
     "Scene",
     "SolidScene",

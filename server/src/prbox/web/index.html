@@ -129,6 +129,28 @@ input[type="color"]{width:34px;height:34px;border:1px solid var(--border);backgr
   </div>
 
   <div class="card">
+    <div class="card-head"><h2>Game of Life</h2></div>
+    <div class="slider-row">
+      <label for="l-speed">Gen/s</label>
+      <input type="range" id="l-speed" min="1" max="200" value="60">
+      <span id="l-speed-v">6.0</span>
+    </div>
+    <div class="slider-row">
+      <label for="l-density">Density</label>
+      <input type="range" id="l-density" min="5" max="95" value="35">
+      <span id="l-density-v">0.35</span>
+    </div>
+    <div class="slider-row">
+      <label for="l-hue">Hue</label>
+      <input type="range" id="l-hue" min="0" max="100" value="45">
+      <span id="l-hue-v">0.45</span>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="sendLife()">Start</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-head"><h2>Rainbow blobs</h2></div>
     <div class="slider-row">
       <label for="r-speed">Speed</label>
@@ -280,6 +302,7 @@ window.addEventListener('resize', () => { if (W) { layout(W, H); dirty = true; }
 /* ---------- weather ---------- */
 
 let weather = null, autoTimer = null;
+let live = null;  // Scene the user last started, for slider retargeting.
 
 async function loadWeather() {
   const res = await fetch('/api/sources/weather');
@@ -317,9 +340,19 @@ function sendText() {
   el.value = '';
 }
 
-function sendSolid() { post('/solid', { color: $('c').value }); }
+function sendSolid() { live = 'solid'; post('/solid', { color: $('c').value }); }
+
+function sendLife() {
+  live = 'life';
+  post('/life', {
+    speed: $('l-speed').value / 10,
+    density: $('l-density').value / 100,
+    hue: $('l-hue').value / 100,
+  });
+}
 
 function sendRainbow() {
+  live = 'rainbow';
   post('/rainbow', {
     speed: $('r-speed').value / 100,
     blobs: +$('r-blobs').value,
@@ -346,7 +379,22 @@ for (const [id, fmt] of [
   ['r-sat', v => (v / 100).toFixed(2)],
 ]) {
   const el = $(id), out = $(id + '-v');
-  el.addEventListener('input', () => { out.textContent = fmt(+el.value); sendRainbow(); });
+  el.addEventListener('input', () => {
+    out.textContent = fmt(+el.value);
+    if (live === 'rainbow') sendRainbow();
+  });
+}
+
+// Life sliders reseed the board, so they only apply on release rather than
+// restarting the simulation on every pixel of slider travel.
+for (const [id, fmt] of [
+  ['l-speed', v => (v / 10).toFixed(1)],
+  ['l-density', v => (v / 100).toFixed(2)],
+  ['l-hue', v => (v / 100).toFixed(2)],
+]) {
+  const el = $(id), out = $(id + '-v');
+  el.addEventListener('input', () => { out.textContent = fmt(+el.value); });
+  el.addEventListener('change', () => { if (live === 'life') sendLife(); });
 }
 
 loadWeather();

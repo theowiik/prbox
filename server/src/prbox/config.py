@@ -50,13 +50,15 @@ class MatrixOptions:
     @classmethod
     def from_env(cls) -> "MatrixOptions":
         return cls(
-            chain_length=_int("PRBOX_MATRIX_CHAIN", 1),
-            parallel=_int("PRBOX_MATRIX_PARALLEL", 1),
-            hardware_mapping=os.getenv("PRBOX_MATRIX_MAPPING", "regular"),
-            gpio_slowdown=_int("PRBOX_MATRIX_GPIO_SLOWDOWN", 2),
-            pwm_bits=_int("PRBOX_MATRIX_PWM_BITS", 11),
-            pwm_lsb_nanoseconds=_int("PRBOX_MATRIX_PWM_LSB_NS", 130),
-            brightness=_int("PRBOX_MATRIX_HW_BRIGHTNESS", 100),
+            chain_length=_int("PRBOX_MATRIX_CHAIN", cls.chain_length),
+            parallel=_int("PRBOX_MATRIX_PARALLEL", cls.parallel),
+            hardware_mapping=os.getenv("PRBOX_MATRIX_MAPPING", cls.hardware_mapping),
+            gpio_slowdown=_int("PRBOX_MATRIX_GPIO_SLOWDOWN", cls.gpio_slowdown),
+            pwm_bits=_int("PRBOX_MATRIX_PWM_BITS", cls.pwm_bits),
+            pwm_lsb_nanoseconds=_int(
+                "PRBOX_MATRIX_PWM_LSB_NS", cls.pwm_lsb_nanoseconds
+            ),
+            brightness=_int("PRBOX_MATRIX_HW_BRIGHTNESS", cls.brightness),
         )
 
 
@@ -64,7 +66,7 @@ class MatrixOptions:
 class Settings:
     mode: str = "dev"
     width: int = 32
-    height: int = 8
+    height: int = 32
     fps: int = 30
     gamma: float = 2.2
     tty_preview: bool = False
@@ -74,13 +76,13 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         settings = cls(
-            mode=os.getenv("PRBOX_DISPLAY_MODE", "dev").strip().lower(),
-            width=_int("PRBOX_DISPLAY_WIDTH", 32),
-            height=_int("PRBOX_DISPLAY_HEIGHT", 8),
-            fps=_int("PRBOX_FPS", 30),
-            gamma=_float("PRBOX_GAMMA", 2.2),
-            tty_preview=_bool("PRBOX_TTY_PREVIEW", False),
-            city=os.getenv("PRBOX_CITY", "Stockholm"),
+            mode=os.getenv("PRBOX_DISPLAY_MODE", cls.mode).strip().lower(),
+            width=_int("PRBOX_DISPLAY_WIDTH", cls.width),
+            height=_int("PRBOX_DISPLAY_HEIGHT", cls.height),
+            fps=_int("PRBOX_FPS", cls.fps),
+            gamma=_float("PRBOX_GAMMA", cls.gamma),
+            tty_preview=_bool("PRBOX_TTY_PREVIEW", cls.tty_preview),
+            city=os.getenv("PRBOX_CITY", cls.city),
             matrix=MatrixOptions.from_env(),
         )
         settings.validate()

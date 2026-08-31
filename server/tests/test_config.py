@@ -8,7 +8,7 @@ def test_defaults_from_empty_env(monkeypatch):
         if key.startswith("PRBOX_"):
             monkeypatch.delenv(key, raising=False)
     settings = Settings.from_env()
-    assert (settings.mode, settings.width, settings.height) == ("dev", 32, 8)
+    assert (settings.mode, settings.width, settings.height) == ("dev", 32, 32)
 
 
 def test_env_overrides(monkeypatch):
