@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>box</title>
+<style>
+/* Teenage-engineering-ish: warm grey faceplate, hairline rules, square
+   corners, tiny uppercase labels, one orange accent and nothing else. */
+:root{
+  --paper:#d6d4cc;
+  --panel:#f3f2ed;
+  --ink:#17160f;
+  --dim:#8b887c;
+  --rule:#17160f;
+  --accent:#ff4f00;
+  --screen:#050507;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  font-size:13px;
+  line-height:1.35;
+  padding:24px 16px 48px;
+  text-transform:lowercase;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+
+/* The whole page is one faceplate; inner rules are single hairlines. */
+.unit{
+  max-width:1060px;margin:0 auto;
+  background:var(--panel);
+  border:1px solid var(--rule);
+}
+
+/* --- title bar --- */
+.bar{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;
+  border-bottom:1px solid var(--rule);
+}
+.mark{
+  width:13px;height:13px;background:var(--accent);
+  border:1px solid var(--rule);flex:none;
+}
+.bar h1{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.bar .sub{color:var(--dim);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.state{
+  margin-left:auto;display:flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.led{width:7px;height:7px;background:var(--dim);border:1px solid var(--rule);flex:none}
+.led.on{background:var(--accent)}
+
+/* --- screen --- */
+/* Stacked by default (preview first, which is the DOM order); side by side
+   on wide screens with the modes on the left and the panel on the right.
+   Grid placement rather than reordering, so the mobile order stays natural. */
+.split{display:grid}
+.screen{padding:12px;border-bottom:1px solid var(--rule)}
+.screen-head{display:flex;align-items:baseline;margin-bottom:8px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.tag b{color:var(--ink);font-weight:400}
+.readout{margin-left:auto;font-size:10px;letter-spacing:.08em;color:var(--dim)}
+.bezel{background:var(--screen);border:1px solid var(--rule);padding:8px;line-height:0}
+#screen{display:block;width:100%;height:auto;image-rendering:pixelated}
+
+.bright{display:flex;align-items:center;gap:10px;margin-top:10px}
+.bright label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);flex:none}
+
+/* --- module grid: borders collapse into single hairlines --- */
+.modules{display:grid;grid-template-columns:repeat(2,1fr)}
+.mod{padding:12px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.mod:nth-child(2n){border-right:0}
+.mod:nth-last-child(-n+2){border-bottom:0}
+@media (max-width:620px){
+  .modules{grid-template-columns:1fr}
+  .mod{border-right:0}
+  .mod:nth-last-child(-n+2){border-bottom:1px solid var(--rule)}
+  .mod:last-child{border-bottom:0}
+}
+@media (min-width:900px){
+  .split{grid-template-columns:1fr 1fr}
+  .modules{grid-column:1;grid-row:1}
+  /* The divider between the halves is the screen's left edge; its bottom
+     border would otherwise draw a stray line across the middle. */
+  .screen{grid-column:2;grid-row:1;border-bottom:0;border-left:1px solid var(--rule)}
+}
+.mod-head{display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.idx{
+  font-size:9px;letter-spacing:.06em;color:var(--panel);background:var(--ink);
+  padding:1px 4px;flex:none;
+}
+.mod-head h2{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.mod-head .note{margin-left:auto;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+
+/* --- weather --- */
+.temp{font-size:38px;font-weight:700;line-height:.95;letter-spacing:-.04em}
+.cond{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-top:4px}
+.rows{margin-top:10px;border-top:1px solid var(--rule)}
+.rows div{
+  display:flex;justify-content:space-between;
+  font-size:10px;letter-spacing:.06em;padding:3px 0;
+  border-bottom:1px solid rgba(23,22,15,.14);
+}
+.rows div:last-child{border-bottom:0}
+.rows span:first-child{color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+
+/* --- controls --- */
+.row{display:flex;gap:6px;align-items:center;margin-top:8px}
+.field{
+  width:100%;background:transparent;border:1px solid var(--rule);color:var(--ink);
+  padding:6px 8px;font:inherit;font-size:12px;border-radius:0;
+  text-transform:none;
+}
+.field::placeholder{color:var(--dim)}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+input[type="color"]{
+  width:30px;height:30px;padding:2px;flex:none;
+  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+}
+.btn{
+  font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--ink);color:var(--panel);border:1px solid var(--rule);
+  padding:6px 12px;border-radius:0;cursor:pointer;white-space:nowrap;
+}
+.btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--panel);border-color:var(--rule)}
+
+.check{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer}
+.check input{
+  appearance:none;width:13px;height:13px;margin:0;flex:none;
+  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+}
+.check input:checked{background:var(--accent)}
+
+/* --- sliders: 1px track, hard square thumb --- */
+input[type="range"]{
+  appearance:none;flex:1;height:14px;background:transparent;cursor:pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track{height:1px;background:var(--rule)}
+input[type="range"]::-moz-range-track{height:1px;background:var(--rule)}
+input[type="range"]::-webkit-slider-thumb{
+  appearance:none;width:8px;height:14px;margin-top:-6.5px;
+  background:var(--ink);border:0;border-radius:0;
+}
+input[type="range"]::-moz-range-thumb{width:8px;height:14px;background:var(--ink);border:0;border-radius:0}
+input[type="range"]:hover::-webkit-slider-thumb{background:var(--accent)}
+input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
+
+.knob{display:flex;align-items:center;gap:9px;margin-top:5px}
+.knob label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);width:52px;flex:none}
+.knob span{font-size:10px;color:var(--dim);width:30px;text-align:right;flex:none}
+.acts{display:flex;align-items:center;gap:8px;margin-top:11px}
+</style>
+</head>
+<body>
+<div class="unit">
+
+  <div class="bar">
+    <span class="mark"></span>
+    <h1>box</h1>
+    <span class="sub">event display</span>
+    <span class="state"><span class="led" id="dot"></span><span id="conn">connecting</span></span>
+  </div>
+
+  <div class="split">
+  <div class="screen">
+    <div class="screen-head">
+      <span class="tag">out <b>/ live panel</b></span>
+      <span class="readout mono" id="meta">&mdash;</span>
+    </div>
+    <div class="bezel"><canvas id="screen"></canvas></div>
+    <div class="bright">
+      <label for="b">bright</label>
+      <input type="range" id="b" min="0" max="100" value="100">
+      <span class="readout mono" id="bval">100%</span>
+      <button class="btn ghost" onclick="post('/clear')">clear</button>
+    </div>
+  </div>
+
+  <div class="modules">
+
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">01</span><h2>weather</h2><span class="note">mock</span></div>
+      <div class="temp mono" id="w-temp">&mdash;</div>
+      <div class="cond" id="w-cond"></div>
+      <div class="rows">
+        <div><span>city</span><span id="w-city">&mdash;</span></div>
+        <div><span>feels</span><span class="mono" id="w-feels">&mdash;</span></div>
+        <div><span>humid</span><span class="mono" id="w-hum">&mdash;</span></div>
+        <div><span>wind</span><span class="mono" id="w-wind">&mdash;</span></div>
+      </div>
+      <div class="acts">
+        <button class="btn" onclick="pushWeather()">send</button>
+        <label class="check"><input type="checkbox" id="w-auto"> auto</label>
+      </div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">02</span><h2>text</h2></div>
+      <input class="field" type="text" id="t" placeholder="long text scrolls" maxlength="512">
+      <div class="row">
+        <input type="color" id="c" value="#00ff00">
+        <button class="btn" onclick="sendText()">send</button>
+        <button class="btn ghost" onclick="sendSolid()">fill</button>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+<script>
+'use strict';
+const API = '/api/display';
+const $ = id => document.getElementById(id);
+
+/* The box may require a bearer token (BOX_TOKEN). Reads stay open so the
+   page always loads; the first write prompts for the token and remembers it. */
+let token = null;
+try { token = localStorage.getItem('box-token'); } catch (e) { token = null; }
+
+function rememberToken(value) {
+  token = value;
+  try { localStorage.setItem('box-token', value); } catch (e) { /* private mode */ }
+}
+
+async function post(path, body, retried) {
+  const opts = { method: 'POST', headers: {} };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+
+  const res = await fetch(API + path, opts);
+  if (res.status === 401 && !retried) {
+    const entered = prompt('This box requires a token:', token || '');
+    if (!entered) return res;
+    rememberToken(entered.trim());
+    return post(path, body, true);
+  }
+  if (!res.ok) console.error(path, res.status, await res.text());
+  return res;
+}
+
+/* ---------- panel rendering ---------- */
+/* The server streams finished RGB frames, so the browser only has to blow the
+   pixels up into round "LEDs" — no font or layout logic lives here. */
+
+const canvas = $('screen');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, CELL = 0, GAP = 0;
+let frame = null, dirty = false;
+let frames = 0, fpsShown = 0, lastFpsAt = performance.now();
+
+function layout(w, h) {
+  W = w; H = h;
+  const avail = Math.min(canvas.parentElement.clientWidth, 840);
+  CELL = Math.max(4, Math.floor(avail / w) - 2);
+  GAP = Math.max(1, Math.round(CELL / 5));
+  const step = CELL + GAP;
+  canvas.width = w * step + GAP;
+  canvas.height = h * step + GAP;
+  canvas.style.width = '100%';
+}
+
+function paint() {
+  requestAnimationFrame(paint);
+  if (!dirty || !frame) return;
+  dirty = false;
+
+  const step = CELL + GAP, rad = CELL / 2;
+  ctx.fillStyle = '#050507';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3;
+      const r = frame[i], g = frame[i + 1], b = frame[i + 2];
+      const cx = GAP + x * step + rad, cy = GAP + y * step + rad;
+      const lit = r + g + b;
+
+      // Unlit LEDs stay visibly dark grey so the panel grid reads as hardware.
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, 6.2832);
+      ctx.fillStyle = lit ? `rgb(${r},${g},${b})` : '#1c1b17';
+      ctx.fill();
+
+      if (lit > 90) {
+        // Cheap bloom: one translucent halo per lit pixel beats canvas shadows.
+        const grad = ctx.createRadialGradient(cx, cy, rad * 0.4, cx, cy, rad * 2.1);
+        grad.addColorStop(0, `rgba(${r},${g},${b},0.34)`);
+        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rad * 2.1, 0, 6.2832);
+        ctx.fill();
+      }
+    }
+  }
+
+  frames++;
+  const now = performance.now();
+  if (now - lastFpsAt >= 1000) {
+    fpsShown = Math.round(frames * 1000 / (now - lastFpsAt));
+    frames = 0; lastFpsAt = now;
+    $('meta').textContent = `${W}×${H} · ${fpsShown} fps`;
+  }
+}
+requestAnimationFrame(paint);
+
+/* ---------- frame stream ---------- */
+
+let ws = null, retry = 500;
+
+function setConn(ok, label) {
+  $('dot').classList.toggle('on', ok);
+  $('conn').textContent = label;
+}
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/display`);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => { retry = 500; setConn(true, 'live'); };
+
+  ws.onmessage = ev => {
+    if (typeof ev.data === 'string') {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'hello') layout(msg.width, msg.height);
+      return;
+    }
+    frame = new Uint8Array(ev.data);
+    dirty = true;
+  };
+
+  ws.onclose = () => {
+    setConn(false, 'reconnecting');
+    // Back off so a stopped server does not turn into a reconnect storm.
+    setTimeout(connect, retry);
+    retry = Math.min(retry * 2, 8000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+connect();
+window.addEventListener('resize', () => { if (W) { layout(W, H); dirty = true; } });
+
+/* ---------- weather ---------- */
+
+let weather = null, autoTimer = null;
+
+async function loadWeather() {
+  const res = await fetch('/api/sources/weather');
+  weather = await res.json();
+  $('w-temp').textContent = weather.temp + '°C';
+  $('w-temp').style.color = weather.display_color;
+  $('w-cond').textContent = weather.condition;
+  $('w-cond').style.color = weather.display_color;
+  $('w-city').textContent = weather.city;
+  $('w-feels').textContent = weather.feels_like + '°C';
+  $('w-hum').textContent = weather.humidity + '%';
+  $('w-wind').textContent = weather.wind_kph + ' km/h';
+  return weather;
+}
+
+async function pushWeather() {
+  const w = weather || await loadWeather();
+  await post('/text', { text: w.display_text, color: w.display_color });
+}
+
+$('w-auto').addEventListener('change', e => {
+  clearInterval(autoTimer);
+  autoTimer = null;
+  if (!e.target.checked) return;
+  pushWeather();
+  autoTimer = setInterval(() => loadWeather().then(pushWeather), 30000);
+});
+
+/* ---------- controls ---------- */
+
+function sendText() {
+  const el = $('t');
+  if (!el.value.trim()) return;
+  post('/text', { text: el.value, color: $('c').value });
+  el.value = '';
+}
+
+function sendSolid() { post('/solid', { color: $('c').value }); }
+
+$('t').addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
+
+let brightnessTimer = null;
+$('b').addEventListener('input', e => {
+  const v = +e.target.value;
+  $('bval').textContent = v + '%';
+  // Debounce: the slider fires far faster than the panel needs updating.
+  clearTimeout(brightnessTimer);
+  brightnessTimer = setTimeout(() => post('/brightness', { brightness: v / 100 }), 40);
+});
+
+loadWeather();
+setInterval(loadWeather, 60000);
+</script>
+</body>
+</html>
