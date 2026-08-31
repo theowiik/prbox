@@ -1,0 +1,46 @@
+# Normalise line endings so the repo never gains CRLF, whatever platform or
+# editor a commit came from. Everything in here is LF in the repository AND in
+# the working tree — no core.autocrlf translation on checkout.
+* text=auto eol=lf
+
+# Sources and config.
+*.py      text eol=lf diff=python
+*.html    text eol=lf diff=html
+*.css     text eol=lf
+*.js      text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.txt     text eol=lf
+*.svg     text eol=lf
+*.cfg     text eol=lf
+*.ini     text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+.editorconfig   text eol=lf
+
+# Makefiles are tab-sensitive; CRLF breaks recipe parsing outright.
+Makefile  text eol=lf
+*.mk      text eol=lf
+
+# Shell scripts and systemd units run on the Pi — CRLF makes the kernel fail to
+# find the interpreter ("bad interpreter: No such file or directory").
+*.sh      text eol=lf
+*.service text eol=lf
+
+# uv writes and verifies this itself; keep git out of it.
+uv.lock   text eol=lf -diff linguist-generated=true
+
+# Binary: never translate, never diff.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary

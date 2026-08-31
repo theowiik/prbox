@@ -7,29 +7,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 All commands run from `server/` via Makefile. Uses uv for package management.
 
 - `make dev` — run dev server (FastAPI + uvicorn, port 8000, auto-reload)
+- `make check` — lint + tests
 - `make format` — format and autofix with ruff
-- `uv run pytest tests/test_display.py::test_show_text` — run a single test
+- `make bench` — measure scene render throughput at the configured panel size
+- `uv run pytest tests/test_render.py::test_long_text_scrolls` — run a single test
 
 ## Project Structure
 
 ```
 server/                        # FastAPI backend (uv-managed, hatchling build)
-├── Makefile                   # dev, format
+├── Makefile                   # dev, format, lint, test, check, bench
 ├── pyproject.toml             # Dependencies, ruff config, pytest config
 ├── src/prbox/                 # Source package (src layout)
-│   ├── app.py                 # FastAPI app creation, lifespan, router registration
-│   ├── config.py              # Environment-based config (PRBOX_DISPLAY_MODE, WIDTH, HEIGHT)
-│   ├── display/               # Display abstraction layer
+│   ├── app.py                 # create_app(), lifespan, router registration
+│   ├── config.py              # Settings/MatrixOptions dataclasses from PRBOX_* env
+│   ├── controller.py          # DisplayController — API-facing state + scene switching
+│   ├── bench.py               # `make bench` — per-scene fps measurement
+│   ├── render/                # Everything that turns state into pixels
+│   │   ├── engine.py          # RenderEngine — fixed-rate loop, crossfade, gamma, fan-out
+│   │   ├── frame.py           # Frame buffer, colour conversion, subpixel text drawing
+│   │   ├── font.py            # 5x7 bitmap font (single source of truth)
+│   │   ├── noise.py           # ValueNoise — animated value noise + fbm
+│   │   └── scenes.py          # BlankScene, TextScene, RainbowScene, SolidScene
+│   ├── display/               # Frame sinks
 │   │   ├── base.py            # Display protocol + DisplayState pydantic model
-│   │   ├── dev.py             # DevDisplay — console output + in-memory state for web preview
-│   │   └── matrix.py          # MatrixDisplay — Raspberry Pi LED matrix (placeholder)
+│   │   ├── dev.py             # DevDisplay — holds latest frame, optional TTY preview
+│   │   └── matrix.py          # MatrixDisplay — rpi-rgb-led-matrix (lazy import)
 │   ├── sources/               # Event sources that feed the display
-│   │   └── weather.py         # MockWeather — time-seeded fake weather data
-│   └── routers/
-│       ├── display.py         # API routes (/api/display/*) + inline HTML dashboard
-│       └── sources.py         # API routes (/api/sources/*)
+│   │   ├── base.py            # Source protocol + SourcePayload
+│   │   └── weather.py         # MockWeather — bucketed fake weather data
+│   ├── routers/
+│   │   ├── display.py         # /api/display/*, /ws/display, GET /
+│   │   └── sources.py         # /api/sources/*
+│   └── web/index.html         # Web dashboard + live panel preview
 └── tests/
-    └── test_display.py        # API integration tests using FastAPI TestClient
+    ├── conftest.py            # TestClient + settings fixtures
+    ├── test_api.py            # HTTP + WebSocket integration tests
+    ├── test_render.py         # Frame, font, noise, scene unit tests
+    ├── test_engine.py         # Render loop and controller tests
+    ├── test_config.py         # Env parsing and validation
+    └── test_sources.py        # Weather source tests
 assets/                        # Project assets (logo, diagrams)
 ```
 
@@ -37,31 +54,80 @@ assets/                        # Project assets (logo, diagrams)
 
 Monorepo with one package (`server/`) using src layout (`server/src/prbox/`).
 
-**Display abstraction** — the core pattern is a `Display` protocol (`display/base.py`) with two backends:
-- `DevDisplay` (`display/dev.py`) — prints to console, stores state in memory for the web preview
-- `MatrixDisplay` (`display/matrix.py`) — placeholder for real Raspberry Pi LED matrix hardware
+**The server renders pixels, not text.** This is the central design decision.
+`render/` rasterises the active scene into an RGB `Frame`; both the LED matrix
+and the browser preview consume those finished frames. Nothing downstream knows
+about fonts or layout, so the preview cannot drift from the hardware. (It used
+to: the 5x7 font was duplicated in JavaScript, and the browser and the panel
+disagreed about overflow.)
 
-New display backends implement the `Display` protocol methods: `show_text`, `clear`, `set_brightness`, `get_state`. No base class inheritance needed — structural subtyping via Protocol.
+**Render loop** — `RenderEngine` runs one asyncio task on a fixed-interval
+clock. Each tick it renders the active scene, crossfades from the outgoing
+scene if one is still fading, applies a gamma + brightness LUT, pushes the
+result to the display backend, and fans it out to WebSocket subscribers. Even
+pacing matters more than raw frame rate for how smooth the panel looks, so the
+loop tracks absolute deadlines and resyncs rather than burst-catching-up when
+it falls behind. A failing display backend is logged, not fatal.
 
-`DisplayState` (pydantic model in `base.py`) is the shared state representation returned by `get_state()` and serialized directly as the API response. Includes text, color, brightness, and matrix dimensions (width/height).
+**Scenes** — a `Scene` is anything with a `name` and `render(frame, t)`, where
+`t` is seconds since the scene became active (Protocol, structural subtyping).
+Scenes are stateless with respect to wall-clock time, which makes them trivial
+to test at arbitrary `t`. `TextScene` centres text that fits and scrolls text
+that doesn't, at fractional pixel offsets — `Frame.draw_text` accepts a float
+`x` and splits each glyph column across two pixel columns.
 
-**App lifecycle** — the display instance is created in the FastAPI lifespan handler (`app.py`) and stored on `app.state.display`. The active backend and matrix dimensions are selected at startup via env vars (`PRBOX_DISPLAY_MODE`, `PRBOX_DISPLAY_WIDTH`, `PRBOX_DISPLAY_HEIGHT`). Routers access the display via a `Depends(_get_display)` dependency that reads from `request.app.state`.
+**Performance** — the target is a Raspberry Pi, so the scene inner loops are
+written for speed over elegance: `RainbowScene` uses a precomputed HSV palette
+LUT, samples noise on a coarse grid and interpolates, and writes pixels as byte
+slices. `make bench` reports what the current device sustains; run it on the Pi
+before raising `PRBOX_FPS`.
 
-**Event sources** — pluggable data sources (`sources/`) that produce content for the display. Currently only `MockWeather` (time-seeded random weather that changes every 5 minutes). Sources expose data via `/api/sources/*` endpoints; the frontend pushes source data to the display via `/api/display/text`. New sources just need a data class and a router endpoint.
+**Displays** — `Display` (`display/base.py`) is a Protocol with `push_frame`
+and `close`. `DevDisplay` keeps the latest frame and can draw the panel in the
+terminal with truecolor half-blocks (`PRBOX_TTY_PREVIEW=1`). `MatrixDisplay`
+drives real HUB75 hardware via `rgbmatrix`, imported lazily so the module still
+imports off-device; it writes to an offscreen canvas and swaps on vsync.
 
-**Web preview** — `GET /` serves an inline HTML page (string constant in `routers/display.py`) that polls `GET /api/display` every 500ms and renders a pixel-accurate LED matrix grid using Canvas. Characters are rendered with a built-in 5x7 bitmap font. The grid adapts to the configured matrix dimensions. API docs are auto-generated at `/docs`.
+**Configuration** — `Settings.from_env()` reads every `PRBOX_*` variable and
+validates it at startup, so a typo fails loudly instead of silently rendering
+at the wrong size. `create_app(settings)` takes an explicit `Settings` so tests
+never touch the environment.
 
-**API routes** — all under `/api/display`:
-- `GET /api/display` — returns current `DisplayState` as JSON
-- `POST /api/display/text` — `{"text": "...", "color": "#RRGGBB"}` (color defaults to `#00FF00`)
-- `POST /api/display/clear` — clears displayed text
+**App lifecycle** — `create_app()` builds the display, engine, controller and
+sources in the lifespan handler and stores them on `app.state`. Routers reach
+them through `Depends` accessors. The engine is stopped and the display closed
+on shutdown.
+
+**Event sources** — pluggable data producers (`sources/`) exposing a
+`SourcePayload` with `display_text` and `display_color`. `MockWeather` is
+deterministic per 5-minute bucket and per city. The frontend polls a source and
+pushes its payload to `/api/display/text`.
+
+**API** — display routes under `/api/display`:
+
+- `GET /api/display` — current `DisplayState` (scene, text, colour, brightness, size, fps)
+- `GET /api/display/frame` — latest frame as base64 RGB (non-WebSocket fallback)
+- `POST /api/display/text` — `{"text": "...", "color": "#RRGGBB"}`
+- `POST /api/display/rainbow` — `{"speed", "blobs", "noise", "saturation"}`
+- `POST /api/display/solid` — `{"color": "#RRGGBB"}`
+- `POST /api/display/clear`
 - `POST /api/display/brightness` — `{"brightness": 0.0-1.0}`
+- `WS /ws/display` — a JSON `hello` with panel size and fps, then raw RGB frames
 
-**Testing** — tests use `fastapi.testclient.TestClient` with a pytest fixture that creates a fresh client (and thus a fresh `DevDisplay`) per test for isolation.
+`GET /` serves `web/index.html`; `/docs` is auto-generated.
+
+**Web preview** — the page opens the WebSocket, draws each frame as round
+"LEDs" on a canvas with a cheap radial-gradient bloom, and reconnects with
+exponential backoff. It contains no rendering logic beyond scaling pixels up.
+
+**Testing** — `tests/conftest.py` builds an app from an explicit `Settings` per
+test. Async engine tests use `@pytest.mark.anyio` with the `anyio_backend`
+fixture. Scene tests assert on frame contents rather than on state flags.
 
 ## Code Style
 
-- Ruff with line-length 88, rules: E, F, I (E501 ignored for inline HTML)
+- Ruff with line-length 88, rules: E, F, I, UP, B (`fastapi.Depends` etc. exempted from B008)
 - Python 3.12+, type hints, Pydantic v2 models for API schemas
 - Protocols for abstractions (structural subtyping, no base class inheritance needed)
 - Request/response models defined in the router file that uses them, domain models in their own module
+- Comments explain *why*, especially where code is shaped by hardware constraints
