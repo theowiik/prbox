@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents (and humans) working in this repository.
 
 ## Commands
 
@@ -10,6 +10,7 @@ needs installing or configuring first:
 - `make dev` — run the box (port 8000, auto-reload)
 - `make demo` / `make demo ARGS=life` — send a generative visual
 - `make gif GIF=party.gif` — send a GIF
+- `make reviews` — watch En Stor Stark Review and announce new reviews
 - `make check` / `make format` — the box *and* both connectors
 
 Inside `box/` the same targets cover the box alone, plus:
@@ -71,6 +72,7 @@ box/                               # The box itself (uv-managed, hatchling build
     ├── test_engine.py             # Render loop
     ├── test_config.py             # Env parsing and validation
     ├── test_sources.py            # Weather source tests
+    ├── test_runner.py             # SourceRunner: off-loop polling, failures
     └── test_logs.py               # Ring buffer, logging bridge, /api/logs
 connectors/                        # Separate projects; never installed on the Pi
 ├── gifcast/                       # Sends a GIF
@@ -78,6 +80,11 @@ connectors/                        # Separate projects; never installed on the P
 │       ├── convert.py             # GIF -> panel-sized RGB frames
 │       ├── client.py              # Thin HTTP wrapper + discover()
 │       └── cli.py                 # `gifcast party.gif`
+├── essr/                          # Watches En Stor Stark Review's RSS feed
+│   └── src/essr/
+│       ├── feed.py                # Parse RSS, ETag fetch, Seen (announced guids)
+│       ├── client.py              # Same thin HTTP wrapper as gifcast
+│       └── cli.py                 # `essr` — the long-running watch loop
 └── boxdemo/                       # Generative visuals, rendered on the sender
     └── src/boxdemo/
         ├── canvas.py              # Its own RGB buffer + hsv_to_rgb
@@ -116,15 +123,6 @@ pacing matters more than raw frame rate for how smooth the panel looks, so the
 loop tracks absolute deadlines and resyncs rather than burst-catching-up when
 it falls behind. A failing display backend is logged, not fatal.
 
-**Stateful scenes** — `LifeScene` is the exception that proves the rule. Life
-is inherently stateful, but it still presents a pure `render(frame, t)`: the
-generation number is derived from `t`, and rewinding `t` replays from the seed
-deterministically. Generations tick a few times a second while the loop runs at
-30fps, so births fade in and deaths fade out across each tick. Small boards
-stagnate quickly, so a board that repeats a recent state or dies out is
-reseeded. The rules live in `render/life.py` with no rendering in them, so they
-can be tested against gliders and blinkers directly.
-
 **The core renders text and pixels, nothing else.** `scenes.py` ships only
 Blank, Text, Frames and Solid. Generative visuals (rainbow gradients, Game of
 Life) are *content*: they live in `connectors/boxdemo`, render frames locally,
@@ -140,13 +138,14 @@ to test at arbitrary `t`. `TextScene` centres text that fits and scrolls text
 that doesn't, at fractional pixel offsets — `Frame.draw_text` accepts a float
 `x` and splits each glyph column across two pixel columns.
 
-**Performance** — the target is a Raspberry Pi, so the scene inner loops are
-written for speed over elegance: `RainbowScene` uses a precomputed HSV palette
-LUT, samples noise on a coarse grid and interpolates, and writes pixels as byte
-slices. `make bench` reports what the current device sustains; run it on the Pi
-before raising `BOX_FPS`.
+**Performance** — the target is a Raspberry Pi, so per-frame work avoids
+per-byte Python loops: gamma is one `bytes.translate` through the LUT, the
+crossfade translates both frames through per-weight scale tables and adds them
+as big integers (provably carry-free), and `FramesScene` copies byte slices.
+`make bench` reports what the current device sustains; run it on the Pi before
+raising `BOX_FPS`.
 
-**Displays** — `Display` (`display/base.py`) is a Protocol with `push_frame`
+**Displays** — `Display` (`display/protocol.py`) is a Protocol with `push_frame`
 and `close`. `DevDisplay` keeps the latest frame and can draw the panel in the
 terminal with truecolor half-blocks (`BOX_TTY_PREVIEW=1`). `MatrixDisplay`
 drives real HUB75 hardware via `rgbmatrix`, imported lazily so the module still
@@ -154,12 +153,21 @@ imports off-device; it writes to an offscreen canvas and swaps on vsync.
 
 **Configuration** — `Settings.from_env()` reads every `BOX_*` variable and
 validates it at startup, so a typo fails loudly instead of silently rendering
-at the wrong size. `create_app(settings)` takes an explicit `Settings` so tests
-never touch the environment.
+at the wrong size — booleans included (`ture` is an error, not False), and in
+matrix mode the chain/parallel wiring must divide the panel size.
+`create_app(settings)` takes an explicit `Settings` so tests never touch the
+environment, and it is also the uvicorn factory: importing `box.api.app`
+builds nothing and reads no environment.
 
 **App lifecycle** — `create_app()` builds the display, engine, scheduler, sources
 and runner in the lifespan handler and stores them on `app.state`. Routers reach
 them through `Depends` accessors. Everything is stopped in reverse on shutdown.
+
+**One thread owns the scheduler.** Handlers that touch the scheduler or engine
+are `async def`: a plain `def` handler runs in FastAPI's threadpool, where it
+would mutate the queue while the scheduler's tick reads it on the event loop.
+Blocking work goes the other way — `SourceRunner` runs each `poll()` on a
+worker thread and submits the result back on the loop.
 
 **Events and the scheduler** — the central idea. `set_scene` is last-write-wins,
 which is fine for a control panel and useless for a box several independent
@@ -197,7 +205,8 @@ goes through the identical event path.
 
 **On-box sources** — `SourceRunner` polls them on a timer and submits ambient
 events. This is what makes the box work headless; previously the dashboard's
-JavaScript ran that timer, so closing the tab froze the panel.
+JavaScript ran that timer, so closing the tab froze the panel. `poll()` may
+block (a real weather source is an HTTP call); it runs off the event loop.
 
 **The log tail** — the dashboard is an admin view, and the question it exists to
 answer is *what did the box just do*. `LogBuffer` (`logs.py`) keeps the last 500
@@ -212,7 +221,7 @@ view cannot disagree about what happened.
 
 - `POST /api/events` — the one endpoint connectors use
 - `DELETE /api/events` — drop the queue
-- `GET /api/display` — current `DisplayState` (scene, source, queued, ambient, …)
+- `GET /api/display` — current `PanelState` (scene, source, queued, ambient, …)
 - `GET /api/display/frame` — latest frame as base64 RGB (non-WebSocket fallback)
 - `POST /api/display/text` — `{"text": "...", "color": "#RRGGBB"}`
 
