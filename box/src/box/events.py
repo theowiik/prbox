@@ -70,6 +70,8 @@ SOURCE_COLORS: dict[str, str] = {
     "calendar": "#4FC3F7",
     "build": "#FF5252",
     "weather": "#78909C",
+    # En Stor Stark Review — lager amber.
+    "essr": "#F2A900",
 }
 
 #: Fallback colour by priority when the source is unknown.

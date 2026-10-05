@@ -74,6 +74,14 @@ _FONT: dict[str, tuple[int, ...]] = {
     "_": (0, 0, 0, 0, 0, 0, 31),
     "|": (4, 4, 4, 4, 4, 4, 4),
     "°": (12, 18, 12, 0, 0, 0, 0),
+    # Accented capitals. There is no row above the cap height, so the mark
+    # takes the top row and the letter is squeezed into the six below it.
+    # Swedish place names are the common case (the default city is Stockholm).
+    "Å": (4, 10, 4, 14, 17, 31, 17),
+    "Ä": (10, 14, 17, 17, 31, 17, 17),
+    "Ö": (10, 14, 17, 17, 17, 17, 14),
+    "Ü": (10, 0, 17, 17, 17, 17, 14),
+    "É": (2, 4, 31, 16, 30, 16, 31),
 }
 
 _FALLBACK = _FONT["?"]

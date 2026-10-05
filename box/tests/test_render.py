@@ -1,5 +1,6 @@
 import pytest
 
+from box.render import font
 from box.render.font import ADVANCE, GLYPH_HEIGHT, text_width
 from box.render.frame import Frame, hex_to_rgb, rgb_to_hex
 from box.render.scenes import BlankScene, SolidScene, TextScene
@@ -187,3 +188,10 @@ def test_frames_exact_size_uses_the_fast_path():
     scene = FramesScene(solid_frames([(1, 2, 3)], 4, 4), 4, 4)
     assert scene._index_map(4, 4) is None, "no scaling table for an exact match"
     assert scene._index_map(8, 8) is not None
+
+
+def test_swedish_letters_have_glyphs():
+    """Review titles and city names are Swedish; none of it may render as '?'."""
+    for char in "ÅÄÖåäöÉéÜü":
+        assert font.glyph(char) != font.glyph("?"), char
+    assert font.glyph("ö") == font.glyph("Ö")

@@ -69,8 +69,9 @@ visual never means changing the Pi.
 ## Connectors
 
 [gifcast](connectors/gifcast) sends a GIF; [boxdemo](connectors/boxdemo) sends
-rainbow blobs and Game of Life. Both default to `http://localhost:8000` and take
-`--url` or the `.env` above. Writing another one is the curl above — there is no
+rainbow blobs and Game of Life; [essr](connectors/essr) watches En Stor Stark
+Review and shows each new review as it is published (`make reviews`). All
+default to `http://localhost:8000` and take `--url` or the `.env` above. Writing another one is the curl above — there is no
 SDK to keep in sync.
 
 ## On the Pi
