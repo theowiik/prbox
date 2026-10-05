@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Send a GIF to a box display"
 requires-python = ">=3.11"
 dependencies = [
-    "pillow>=11.0",
-    "httpx2>=2.12",
+    "pillow>=12.3",
+    "httpx2>=2.13",
 ]
 
 [project.scripts]
@@ -19,7 +19,7 @@ build-backend = "hatchling.build"
 packages = ["src/gifcast"]
 
 [dependency-groups]
-dev = ["pytest>=9.0", "ruff>=0.16"]
+dev = ["pytest>=9.1", "ruff>=0.16"]
 
 [tool.ruff]
 line-length = 88

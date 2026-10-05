@@ -28,7 +28,7 @@ Makefile                           # dev, demo, gif, check, format — the front
 box/                               # The box itself (uv-managed, hatchling build)
 ├── Makefile                       # dev, serve, format, lint, test, check, bench
 ├── pyproject.toml                 # Dependencies, ruff config, pytest config
-├── .python-version                # Pins the interpreter (3.14.7) for uv
+├── .python-version                # Pins the interpreter (3.14.8) for uv
 ├── src/box/
 │   │                              # ── core: never imports a web framework ──
 │   ├── config.py                  # Settings/MatrixOptions from BOX_* env
@@ -240,7 +240,7 @@ fixture. Scene tests assert on frame contents rather than on state flags.
 ## Code Style
 
 - Ruff with line-length 88, rules: E, F, I, UP, B (`fastapi.Depends` etc. exempted from B008)
-- Python 3.14+ (pinned to 3.14.7 in `.python-version`), type hints, Pydantic v2 models
+- Python 3.14+ (pinned to 3.14.8 in `.python-version`), type hints, Pydantic v2 models
 - Deferred annotations (PEP 649) are on by default, so forward references need no quotes
 - Protocols for abstractions (structural subtyping, no base class inheritance needed)
 - Request/response models defined in the router file that uses them, domain models in their own module

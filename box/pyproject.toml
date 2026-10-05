@@ -4,9 +4,9 @@ version = "0.3.0"
 description = "A generic LED display box: connectors POST events, the box renders them"
 requires-python = ">=3.14"
 dependencies = [
-    "fastapi>=0.141",
-    "uvicorn[standard]>=0.52",
-    "websockets>=17.0",
+    "fastapi>=0.142",
+    "uvicorn[standard]>=0.54",
+    "websockets>=17.2",
 ]
 
 [project.scripts]
@@ -15,12 +15,12 @@ box = "box.__main__:main"
 [project.optional-dependencies]
 # Installed on the Raspberry Pi only. The `rgbmatrix` module itself is built
 # from hzeller/rpi-rgb-led-matrix and is not available on PyPI.
-pi = ["pillow>=12.0"]
+pi = ["pillow>=12.3"]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0",
-    "httpx2>=2.12",
+    "pytest>=9.1",
+    "httpx2>=2.13",
     "ruff>=0.16",
 ]
 
