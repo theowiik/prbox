@@ -83,10 +83,21 @@ class LogBuffer:
 
     # -- reading -----------------------------------------------------------
 
-    def since(self, seq: int = 0, limit: int = CAPACITY) -> list[LogEntry]:
-        """Entries newer than `seq`, oldest first, most recent `limit` of them."""
+    def since(
+        self, seq: int = 0, limit: int = CAPACITY, channel: Channel | None = None
+    ) -> list[LogEntry]:
+        """Entries newer than `seq`, oldest first, most recent `limit` of them.
+
+        `channel` filters before `limit` applies, so asking for the last 50
+        events returns 50 events rather than whichever ones were among the
+        last 50 lines.
+        """
         with self._lock:
-            newer = [e for e in self._entries if e.seq > seq]
+            newer = [
+                e
+                for e in self._entries
+                if e.seq > seq and (channel is None or e.channel == channel)
+            ]
         return newer[-limit:] if limit > 0 else []
 
     @property
@@ -166,7 +177,12 @@ def install(buffer: LogBuffer, level: int = logging.INFO) -> BufferHandler:
     """Tee the root logger into `buffer`. Returns the handler, to remove later."""
     handler = BufferHandler(buffer)
     handler.setLevel(level)
-    logging.getLogger().addHandler(handler)
+    root = logging.getLogger()
+    # The root logger defaults to WARNING, which would starve the tail of the
+    # INFO lines it exists for — whoever else configured logging, or didn't.
+    if root.getEffectiveLevel() > level:
+        root.setLevel(level)
+    root.addHandler(handler)
     return handler
 
 

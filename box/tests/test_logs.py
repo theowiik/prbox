@@ -39,6 +39,15 @@ def test_since_returns_only_newer_entries(buffer):
     assert [e.message for e in buffer.since(cursor)] == ["new"]
 
 
+def test_channel_filters_before_the_limit(buffer):
+    buffer.append("an event", channel="event")
+    for i in range(3):
+        buffer.append(f"line {i}")
+    # The event is older than the last two lines, but it is the last event.
+    events = buffer.since(0, limit=2, channel="event")
+    assert [e.message for e in events] == ["an event"]
+
+
 def test_handler_captures_records_and_tracebacks(buffer):
     logger = logging.getLogger("box.test.capture")
     handler = BufferHandler(buffer)

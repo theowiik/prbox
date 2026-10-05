@@ -21,6 +21,27 @@ def _gamma_lut(brightness: float, gamma: float) -> bytes:
     )
 
 
+#: `_SCALE[a][v]` is `v * a / 255`, rounded — one translate table per weight.
+_SCALE: tuple[bytes, ...] = tuple(
+    bytes((v * a + 127) // 255 for v in range(256)) for a in range(256)
+)
+
+
+def _crossfade(cur: bytearray, old: bytearray, alpha: int) -> None:
+    """Blend `old` into `cur` in place, `cur` weighted `alpha`/255.
+
+    The per-byte loop this replaces was the costliest thing a Pi did all
+    frame. Both scaled buffers come out of `bytes.translate` (C speed), then
+    are added as two big integers. That never carries from one byte into the
+    next: if both inputs are below 255 the blend is at most 254 and the two
+    roundings add at most 1; if either is 255 its half is exact.
+    """
+    a = cur.translate(_SCALE[alpha])
+    b = old.translate(_SCALE[255 - alpha])
+    total = int.from_bytes(a) + int.from_bytes(b)
+    cur[:] = total.to_bytes(len(cur))
+
+
 class RenderEngine:
     """Renders the active scene into frames and pushes them to a display.
 
@@ -56,7 +77,6 @@ class RenderEngine:
         self._task: asyncio.Task | None = None
         self._subscribers: set[asyncio.Queue] = set()
         self._frame_index = 0
-        self._dropped = 0
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -137,19 +157,12 @@ class RenderEngine:
                 self._prev = None
             else:
                 self._prev.render(self._prev_frame, now - self._prev_started)
-                alpha = int(progress * 255)
-                inv = 255 - alpha
-                cur, old = self._frame.buf, self._prev_frame.buf
-                for i in range(len(cur)):
-                    cur[i] = (cur[i] * alpha + old[i] * inv) // 255
+                _crossfade(self._frame.buf, self._prev_frame.buf, int(progress * 255))
 
     def _emit(self) -> None:
         """Gamma-correct the frame, hand it to the display, notify subscribers."""
-        lut = self._lut
-        src = self._frame.buf
         out = self._output
-        for i in range(len(src)):
-            out[i] = lut[src[i]]
+        out[:] = self._frame.buf.translate(self._lut)
 
         try:
             self._display.push_frame(out)
@@ -164,7 +177,6 @@ class RenderEngine:
                 # Slow client: drop the frame it never read rather than block.
                 try:
                     queue.get_nowait()
-                    self._dropped += 1
                 except asyncio.QueueEmpty:
                     pass
             try:

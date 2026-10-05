@@ -32,6 +32,7 @@ def test_env_overrides(monkeypatch):
         ("BOX_DISPLAY_WIDTH", "0"),
         ("BOX_GAMMA", "0"),
         ("BOX_FPS", "fast"),
+        ("BOX_TTY_PREVIEW", "ture"),
     ],
 )
 def test_invalid_env_rejected(monkeypatch, key, value):
@@ -98,3 +99,41 @@ def test_dotenv_search_stops_at_the_repo_root(tmp_path, monkeypatch):
     (project / ".git").mkdir(parents=True)
     monkeypatch.chdir(project)
     assert Settings.from_env().port == 8000
+
+
+# -- matrix wiring -------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("BOX_MATRIX_CHAIN", "3"),  # 32 does not split across 3 panels
+        ("BOX_MATRIX_PARALLEL", "0"),
+        ("BOX_MATRIX_HW_BRIGHTNESS", "0"),
+        ("BOX_MATRIX_PWM_BITS", "12"),
+    ],
+)
+def test_bad_matrix_wiring_rejected_in_matrix_mode(monkeypatch, key, value):
+    monkeypatch.setenv("BOX_DISPLAY_MODE", "matrix")
+    monkeypatch.setenv(key, value)
+    with pytest.raises(ValueError):
+        Settings.from_env()
+
+
+def test_matrix_wiring_ignored_in_dev_mode(monkeypatch):
+    """A Pi's .env copied to a laptop must not stop the dev server starting."""
+    monkeypatch.setenv("BOX_MATRIX_CHAIN", "3")
+    assert Settings.from_env().mode == "dev"
+
+
+def test_chained_panels_accepted(monkeypatch):
+    monkeypatch.setenv("BOX_DISPLAY_MODE", "matrix")
+    monkeypatch.setenv("BOX_DISPLAY_WIDTH", "64")
+    monkeypatch.setenv("BOX_MATRIX_CHAIN", "2")
+    assert Settings.from_env().matrix.chain_length == 2
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("off", False), ("YES", True)])
+def test_bool_spellings(monkeypatch, raw, expected):
+    monkeypatch.setenv("BOX_TTY_PREVIEW", raw)
+    assert Settings.from_env().tty_preview is expected

@@ -69,12 +69,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def parse_size(text: str) -> tuple[int, int]:
     try:
-        w, h = text.lower().split("x", 1)
-        return int(w), int(h)
+        w, h = (int(part) for part in text.lower().split("x", 1))
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
             f"--size must look like 32x32, got {text!r}"
         ) from exc
+    if w < 1 or h < 1:
+        raise argparse.ArgumentTypeError(f"--size must be positive, got {text!r}")
+    return w, h
 
 
 def main(argv: list[str] | None = None) -> int:

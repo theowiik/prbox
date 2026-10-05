@@ -4,7 +4,6 @@ Reads are open like the rest of the dashboard's reads; clearing the tail is a
 write and takes the token.
 """
 
-import asyncio
 import logging
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
@@ -30,9 +29,7 @@ def get_logs(
 ) -> dict:
     """Poll with `since` — the cursor a client got from its last response."""
     buffer = _get_logs(request)
-    entries: list[LogEntry] = buffer.since(since, limit=limit)
-    if channel:
-        entries = [e for e in entries if e.channel == channel]
+    entries: list[LogEntry] = buffer.since(since, limit=limit, channel=channel)
     return {"cursor": buffer.cursor, "entries": entries}
 
 
@@ -62,7 +59,7 @@ async def stream_logs(websocket: WebSocket) -> None:
         while True:
             entry = await queue.get()
             await websocket.send_json({"type": "entry", "entry": entry.model_dump()})
-    except WebSocketDisconnect, asyncio.CancelledError:
+    except WebSocketDisconnect:
         pass
     except RuntimeError:
         # Socket closed underneath us mid-send; nothing to do but unsubscribe.

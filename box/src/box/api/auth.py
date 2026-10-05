@@ -16,11 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def _configured_token(request: Request) -> str:
-    return (
-        getattr(request.app.state, "settings", None)
-        and request.app.state.settings.token
-        or ""
-    )
+    settings = getattr(request.app.state, "settings", None)
+    return settings.token if settings is not None else ""
 
 
 def require_token(request: Request) -> None:

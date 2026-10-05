@@ -5,7 +5,6 @@ because the dashboard is easier to write against them, not because they are a
 second way in. Connectors should use `/api/events`.
 """
 
-import asyncio
 import base64
 import logging
 from pathlib import Path
@@ -51,7 +50,7 @@ class Ok(BaseModel):
 
 
 @router.get("/api/display", tags=["display"], summary="Current panel state")
-def get_state(scheduler: Scheduler = Depends(_get_scheduler)) -> PanelState:
+async def get_state(scheduler: Scheduler = Depends(_get_scheduler)) -> PanelState:
     return scheduler.get_state()
 
 
@@ -71,7 +70,7 @@ def _submit(
 
 
 @router.post("/api/display/text", tags=["display"], dependencies=[Protected])
-def show_text(
+async def show_text(
     body: ShowTextRequest, scheduler: Scheduler = Depends(_get_scheduler)
 ) -> Ok:
     # Rebuilt as a plain TextSpec: priority belongs to the event, not the scene.
@@ -80,12 +79,14 @@ def show_text(
 
 
 @router.post("/api/display/solid", tags=["display"], dependencies=[Protected])
-def show_solid(body: SolidSpec, scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
+async def show_solid(
+    body: SolidSpec, scheduler: Scheduler = Depends(_get_scheduler)
+) -> Ok:
     return _submit(scheduler, body)
 
 
 @router.post("/api/display/clear", tags=["display"], dependencies=[Protected])
-def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
+async def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
     # Empty the rotation and the queue and leave it empty — installing a blank
     # *card* would park a dark slot in the rotation that other cards cycle past.
     scheduler.clear_ambient()
@@ -94,7 +95,7 @@ def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
 
 
 @router.post("/api/display/brightness", tags=["display"], dependencies=[Protected])
-def set_brightness(
+async def set_brightness(
     body: SetBrightnessRequest, scheduler: Scheduler = Depends(_get_scheduler)
 ) -> Ok:
     scheduler.set_brightness(body.brightness)
@@ -102,7 +103,7 @@ def set_brightness(
 
 
 @router.get("/api/display/frame", tags=["display"], summary="Latest frame, base64 RGB")
-def get_frame(request: Request) -> dict:
+async def get_frame(request: Request) -> dict:
     """Single-frame fallback for clients that cannot hold a WebSocket open."""
     engine = request.app.state.engine
     width, height = engine.size
@@ -127,7 +128,7 @@ async def stream_frames(websocket: WebSocket) -> None:
         while True:
             frame = await queue.get()
             await websocket.send_bytes(frame)
-    except WebSocketDisconnect, asyncio.CancelledError:
+    except WebSocketDisconnect:
         pass
     except RuntimeError:
         # Socket closed underneath us mid-send; nothing to do but unsubscribe.

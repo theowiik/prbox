@@ -22,7 +22,7 @@ def _find_dotenv(start: Path) -> Path | None:
     something else and must never end up configuring the box.
     """
     for folder in (start, *start.parents):
-        candidate = folder / ".env"
+        candidate = folder / DOTENV
         if candidate.is_file():
             return candidate
         if (folder / ".git").exists():
@@ -74,11 +74,22 @@ def _float(name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number, got {raw!r}") from exc
 
 
+_TRUE = {"1", "true", "yes", "on"}
+_FALSE = {"0", "false", "no", "off"}
+
+
 def _bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
-    if raw is None:
+    if raw is None or raw.strip() == "":
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+    value = raw.strip().lower()
+    if value in _TRUE:
+        return True
+    if value in _FALSE:
+        return False
+    # `ture` silently meaning False is exactly the kind of typo this module
+    # exists to catch.
+    raise ValueError(f"{name} must be true or false, got {raw!r}")
 
 
 @dataclass(frozen=True)
@@ -104,6 +115,29 @@ class MatrixOptions:
             pwm_lsb_nanoseconds=_int("BOX_MATRIX_PWM_LSB_NS", cls.pwm_lsb_nanoseconds),
             brightness=_int("BOX_MATRIX_HW_BRIGHTNESS", cls.brightness),
         )
+
+    def validate(self, width: int, height: int) -> None:
+        """Check the wiring adds up to the panel size before the library sees it.
+
+        rpi-rgb-led-matrix accepts nonsense here and draws garbage, which on
+        hardware looks like a wiring fault rather than a config one.
+        """
+        if self.chain_length < 1 or self.parallel < 1:
+            raise ValueError("BOX_MATRIX_CHAIN and BOX_MATRIX_PARALLEL must be >= 1")
+        if width % self.chain_length:
+            raise ValueError(
+                f"BOX_DISPLAY_WIDTH ({width}) must divide evenly across "
+                f"BOX_MATRIX_CHAIN ({self.chain_length}) panels"
+            )
+        if height % self.parallel:
+            raise ValueError(
+                f"BOX_DISPLAY_HEIGHT ({height}) must divide evenly across "
+                f"BOX_MATRIX_PARALLEL ({self.parallel}) chains"
+            )
+        if not 1 <= self.brightness <= 100:
+            raise ValueError("BOX_MATRIX_HW_BRIGHTNESS must be between 1 and 100")
+        if not 1 <= self.pwm_bits <= 11:
+            raise ValueError("BOX_MATRIX_PWM_BITS must be between 1 and 11")
 
 
 @dataclass(frozen=True)
@@ -165,3 +199,5 @@ class Settings:
             raise ValueError("BOX_SOURCE_INTERVAL must be positive")
         if not 1 <= self.port <= 65535:
             raise ValueError("BOX_PORT must be a valid port")
+        if self.mode == "matrix":
+            self.matrix.validate(self.width, self.height)

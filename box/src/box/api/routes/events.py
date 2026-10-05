@@ -5,10 +5,10 @@ sender, the box's own weather poller — posts the same Event here. Adding an
 integration means writing a curl call, not a client library.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from ...events import Event, FramesSpec, Priority
+from ...events import Event, Priority
 from ...scheduler import Scheduler
 from ..auth import Protected
 
@@ -27,15 +27,15 @@ class Accepted(BaseModel):
     queued: int
 
 
-@router.post("", summary="Submit an event", dependencies=[Protected])
-def submit(event: Event, scheduler: Scheduler = Depends(_get_scheduler)) -> Accepted:
-    if isinstance(event.scene, FramesSpec):
-        # Surface a malformed animation as a 422 rather than a render-time crash.
-        try:
-            event.scene.frame_count()
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+# Handlers that touch the scheduler are `async def` on purpose. A plain `def`
+# runs in FastAPI's threadpool, where it would mutate the queue while the
+# scheduler's own tick reads it on the event loop.
 
+
+@router.post("", summary="Submit an event", dependencies=[Protected])
+async def submit(
+    event: Event, scheduler: Scheduler = Depends(_get_scheduler)
+) -> Accepted:
     item = scheduler.submit(event)
     return Accepted(
         id=item.id,
@@ -47,6 +47,6 @@ def submit(event: Event, scheduler: Scheduler = Depends(_get_scheduler)) -> Acce
 
 
 @router.delete("", summary="Drop queued events", dependencies=[Protected])
-def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> dict:
+async def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> dict:
     scheduler.clear()
     return {"status": "ok"}

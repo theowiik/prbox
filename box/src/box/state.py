@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 class PanelState(BaseModel):
     """Serialised straight to `GET /api/display`."""
 
-    #: Name of the scene being rendered: text, frames, rainbow, life, solid, blank.
+    #: Name of the scene being rendered: text, frames, solid or blank.
     scene: str = "blank"
     #: Which connector owns the panel right now, if any.
     source: str | None = None

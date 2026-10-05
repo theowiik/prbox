@@ -39,11 +39,17 @@ class SourceRunner:
         finally:
             self._task = None
 
-    def poll_once(self) -> None:
-        """Refresh every source's ambient card, surviving individual failures."""
+    async def poll_once(self) -> None:
+        """Refresh every source's ambient card, surviving individual failures.
+
+        `poll()` runs on a worker thread: a real source is a blocking HTTP call,
+        and a slow weather API must not freeze the render loop for its timeout.
+        The result is submitted back here on the loop, which is the only thread
+        allowed to touch the scheduler.
+        """
         for source in self._sources:
             try:
-                event = source.poll()
+                event = await asyncio.to_thread(source.poll)
             except Exception:
                 # One broken source must not stop the others or kill the loop.
                 logger.exception("Source %r failed to poll", source.name)
@@ -55,9 +61,7 @@ class SourceRunner:
         logger.info(
             "Polling %d source(s) every %.0fs", len(self._sources), self._interval
         )
-        try:
-            while True:
-                self.poll_once()
-                await asyncio.sleep(self._interval)
-        except asyncio.CancelledError:
-            raise
+        # The app polls once at startup, so the first wait comes first here.
+        while True:
+            await asyncio.sleep(self._interval)
+            await self.poll_once()

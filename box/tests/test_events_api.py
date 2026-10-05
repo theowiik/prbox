@@ -126,6 +126,8 @@ def test_frames_with_wrong_byte_count_rejected(client):
     )
     assert r.status_code == 422
     assert "whole number" in r.text
+    # The upload is not echoed back in the error.
+    assert bad not in r.text
 
 
 def test_frames_reject_bad_base64(client):

@@ -27,7 +27,7 @@ import logging
 import time
 from collections import deque
 
-from .events import Event, Priority, Scheduled, TextSpec, build_scene
+from .events import PRIORITY_COLORS, Event, Priority, Scheduled, TextSpec, build_scene
 from .render.engine import RenderEngine
 from .render.scenes import BlankScene, Scene
 from .state import PanelState
@@ -50,13 +50,22 @@ def summarise(spec) -> str:
 class AmbientCard:
     """One slot in the idle rotation, owned by a source."""
 
-    __slots__ = ("source", "scene", "dwell", "label")
+    __slots__ = ("source", "scene", "dwell", "label", "color")
 
-    def __init__(self, source: str, scene: Scene, dwell: float, label: str) -> None:
+    def __init__(
+        self,
+        source: str,
+        scene: Scene,
+        dwell: float,
+        label: str,
+        color: str = PRIORITY_COLORS[Priority.AMBIENT],
+    ) -> None:
         self.source = source
         self.scene = scene
         self.dwell = dwell
         self.label = label
+        #: Reported in the panel state, so the dashboard can tint the card.
+        self.color = color
 
 
 class Scheduler:
@@ -71,8 +80,6 @@ class Scheduler:
         self._ambient_showing: str | None = None
 
         self._task: asyncio.Task | None = None
-        self._accepted = 0
-        self._dropped = 0
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -95,10 +102,6 @@ class Scheduler:
     def queue_depth(self) -> int:
         return len(self._queue)
 
-    @property
-    def current_source(self) -> str | None:
-        return self._current.source if self._current else self._ambient_showing
-
     # -- submitting --------------------------------------------------------
 
     def submit(self, event: Event, focus: bool = False) -> Scheduled:
@@ -109,7 +112,6 @@ class Scheduler:
         not hijack whatever the rotation is currently on.
         """
         item = Scheduled(event)
-        self._accepted += 1
 
         if event.priority is Priority.AMBIENT:
             self._upsert_ambient(item, focus=focus)
@@ -174,9 +176,7 @@ class Scheduler:
         )
 
     def _drop_pending_from(self, source: str) -> None:
-        before = len(self._queue)
         self._queue = deque(i for i in self._queue if i.source != source)
-        self._dropped += before - len(self._queue)
 
     def _preempt(self, item: Scheduled) -> None:
         now = time.monotonic()
@@ -193,7 +193,9 @@ class Scheduler:
     def _upsert_ambient(self, item: Scheduled, focus: bool = False) -> None:
         """Replace this source's ambient card, or append a new one."""
         label = summarise(item.event.scene)
-        card = AmbientCard(item.source, item.scene, item.duration, label)
+        card = AmbientCard(
+            item.source, item.scene, item.duration, label, item.event.effective_color()
+        )
         for i, existing in enumerate(self._ambient):
             if existing.source == card.source:
                 self._ambient[i] = card
@@ -280,15 +282,12 @@ class Scheduler:
     async def _run(self) -> None:
         # Ten hertz is far finer than any dwell time and costs nothing; the
         # render loop stays untouched so it can hold its frame cadence.
-        try:
-            while True:
-                try:
-                    self.tick()
-                except Exception:
-                    logger.exception("Scheduler tick failed")
-                await asyncio.sleep(0.1)
-        except asyncio.CancelledError:
-            raise
+        while True:
+            try:
+                self.tick()
+            except Exception:
+                logger.exception("Scheduler tick failed")
+            await asyncio.sleep(0.1)
 
     # -- introspection -----------------------------------------------------
 
@@ -313,10 +312,10 @@ class Scheduler:
             source = self._ambient_showing
             priority = Priority.AMBIENT.value
             text = card.label if card and card.scene.name == "text" else ""
-            color = "#00FF00"
+            color = card.color if card else PRIORITY_COLORS[Priority.AMBIENT]
         else:
-            scene_name, source, text, color = "blank", None, "", "#00FF00"
-            priority = None
+            scene_name, source, text = "blank", None, ""
+            color, priority = PRIORITY_COLORS[Priority.AMBIENT], None
 
         return PanelState(
             scene=scene_name,

@@ -284,3 +284,15 @@ def test_scene_kinds_all_build(scheduler):
     for spec in (TextSpec(text="a"), SolidSpec(color="#fff")):
         scheduler.submit(Event(source="x", scene=spec, duration=30))
         scheduler.clear()
+
+
+def test_ambient_card_reports_its_own_colour(scheduler):
+    scheduler.submit(
+        Event(
+            source="weather",
+            priority=Priority.AMBIENT,
+            scene=TextSpec(text="22C", color="#FFD54F"),
+        )
+    )
+    state = scheduler.get_state()
+    assert (state.source, state.color) == ("weather", "#FFD54F")

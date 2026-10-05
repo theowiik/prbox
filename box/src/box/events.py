@@ -16,7 +16,7 @@ import uuid
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from .render.frame import hex_to_rgb
 from .render.scenes import (
@@ -140,32 +140,41 @@ class FramesSpec(BaseModel):
     #: base64 of frame_count * width * height * 3 bytes, row-major from top-left.
     data: str
 
+    #: The decoded pixels. Decoded once, during validation: an upload can be
+    #: 8 MB, and decoding it again for every consumer is real time on a Pi.
+    _raw: bytes = PrivateAttr(default=b"")
+
     @property
     def raw(self) -> bytes:
-        return base64.b64decode(self.data, validate=True)
+        return self._raw
 
-    @field_validator("data")
-    @classmethod
-    def _decodable(cls, v: str) -> str:
+    @model_validator(mode="after")
+    def _decode(self) -> FramesSpec:
+        # Size first, from the encoded length, so an oversized upload is
+        # refused before anything is allocated for it.
+        if len(self.data) * 3 // 4 > MAX_FRAMES_BYTES + 2:
+            raise ValueError(f"data exceeds {MAX_FRAMES_BYTES} bytes")
         try:
-            raw = base64.b64decode(v, validate=True)
-        except Exception as exc:
+            raw = base64.b64decode(self.data, validate=True)
+        except ValueError as exc:
             raise ValueError("data must be valid base64") from exc
         if not raw:
             raise ValueError("data is empty")
         if len(raw) > MAX_FRAMES_BYTES:
             raise ValueError(f"data exceeds {MAX_FRAMES_BYTES} bytes")
-        return v
-
-    def frame_count(self) -> int:
+        # Checked here rather than at render time, so a truncated upload is a
+        # 422 at the door instead of a crash mid-loop.
         stride = self.width * self.height * 3
-        raw = self.raw
         if len(raw) % stride:
             raise ValueError(
                 f"data is {len(raw)} bytes, not a whole number of "
                 f"{self.width}x{self.height} RGB frames ({stride} bytes each)"
             )
-        return len(raw) // stride
+        self._raw = raw
+        return self
+
+    def frame_count(self) -> int:
+        return len(self._raw) // (self.width * self.height * 3)
 
 
 SceneSpec = Annotated[

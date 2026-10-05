@@ -252,7 +252,6 @@ input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
       </div>
       <div class="acts">
         <button class="btn" onclick="pushWeather()">send</button>
-        <label class="check"><input type="checkbox" id="w-auto"> auto</label>
       </div>
     </div>
 
@@ -446,7 +445,9 @@ window.addEventListener('resize', () => { if (W) { layout(W, H); dirty = true; }
 
 /* ---------- weather ---------- */
 
-let weather = null, autoTimer = null;
+/* The box keeps weather in its own ambient rotation (SourceRunner), so the
+   page only displays it; "send" is a one-off push to the front of the queue. */
+let weather = null;
 
 async function loadWeather() {
   const res = await fetch('/api/sources/weather');
@@ -466,14 +467,6 @@ async function pushWeather() {
   const w = weather || await loadWeather();
   await post('/text', { text: w.display_text, color: w.display_color });
 }
-
-$('w-auto').addEventListener('change', e => {
-  clearInterval(autoTimer);
-  autoTimer = null;
-  if (!e.target.checked) return;
-  pushWeather();
-  autoTimer = setInterval(() => loadWeather().then(pushWeather), 30000);
-});
 
 /* ---------- controls ---------- */
 

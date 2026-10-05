@@ -30,7 +30,8 @@ def main(argv: list[str] | None = None) -> None:
             settings.host,
         )
     uvicorn.run(
-        "box.api.app:app",
+        "box.api.app:create_app",
+        factory=True,
         host=settings.host,
         port=settings.port,
         reload=args.reload,

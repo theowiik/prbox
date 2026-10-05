@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from box.display.dev import DevDisplay
-from box.render.engine import RenderEngine, _gamma_lut
+from box.render.engine import RenderEngine, _crossfade, _gamma_lut
 from box.render.scenes import SolidScene
 
 
@@ -21,6 +21,28 @@ def test_gamma_lut_endpoints():
 def test_gamma_lut_scales_with_brightness():
     assert _gamma_lut(0.5, 2.2)[255] == 128
     assert max(_gamma_lut(0.0, 2.2)) == 0
+
+
+def test_crossfade_matches_a_per_byte_blend():
+    cur = bytearray(range(256)) * 3
+    old = bytearray(reversed(range(256))) * 3
+    for alpha in (0, 1, 77, 128, 254, 255):
+        out = bytearray(cur)
+        _crossfade(out, old, alpha)
+        for c, o, got in zip(cur, old, out, strict=True):
+            exact = (c * alpha + o * (255 - alpha)) / 255
+            # Each half is rounded separately, so it may be one step out.
+            assert abs(got - exact) <= 1
+
+
+def test_crossfade_endpoints_are_exact():
+    cur, old = bytearray([255, 16, 0]), bytearray([0, 32, 255])
+    full = bytearray(cur)
+    _crossfade(full, old, 255)
+    assert full == cur
+    none = bytearray(cur)
+    _crossfade(none, old, 0)
+    assert none == old
 
 
 def test_brightness_validated():
