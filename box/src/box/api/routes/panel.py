@@ -40,6 +40,12 @@ class SetBrightnessRequest(BaseModel):
     brightness: float = Field(ge=0.0, le=1.0)
 
 
+class ShowTextRequest(TextSpec):
+    """The dashboard's text form: a scene plus the tier to send it at."""
+
+    priority: Priority = Priority.NORMAL
+
+
 class Ok(BaseModel):
     status: str = "ok"
 
@@ -65,8 +71,12 @@ def _submit(
 
 
 @router.post("/api/display/text", tags=["display"], dependencies=[Protected])
-def show_text(body: TextSpec, scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
-    return _submit(scheduler, body)
+def show_text(
+    body: ShowTextRequest, scheduler: Scheduler = Depends(_get_scheduler)
+) -> Ok:
+    # Rebuilt as a plain TextSpec: priority belongs to the event, not the scene.
+    spec = TextSpec(text=body.text, color=body.color)
+    return _submit(scheduler, spec, priority=body.priority)
 
 
 @router.post("/api/display/solid", tags=["display"], dependencies=[Protected])

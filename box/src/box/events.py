@@ -29,14 +29,36 @@ from .render.scenes import (
 
 
 class Priority(StrEnum):
-    """How insistently an event wants the panel."""
+    """How insistently an event wants the panel.
+
+    The two instant tiers are the interesting ones. A Discord ping should jump
+    the queue, but two pings arriving together should not shove each other off
+    the panel before either can be read — so an `alert` yields to an instant
+    event already on screen and shows next instead. An `alarm` never yields:
+    a smoke detector does not wait its turn behind a chat notification.
+    """
 
     #: Background content. Joins the idle rotation, never interrupts.
     AMBIENT = "ambient"
     #: Shown in turn for its duration, then the panel returns to ambient.
     NORMAL = "normal"
-    #: Takes the panel immediately, interrupting whatever is showing.
+    #: Jumps the queue — but waits if another instant event is on the panel.
     ALERT = "alert"
+    #: Always takes the panel, interrupting even an alert. Use it sparingly.
+    ALARM = "alarm"
+
+    @property
+    def rank(self) -> int:
+        """Ordering. `Priority` is a StrEnum, so `<` would compare spelling."""
+        return _RANK[self]
+
+
+_RANK: dict[Priority, int] = {
+    Priority.AMBIENT: 0,
+    Priority.NORMAL: 1,
+    Priority.ALERT: 2,
+    Priority.ALARM: 3,
+}
 
 
 #: Per-source colours. A connector that sends no colour gets its brand here.
@@ -55,6 +77,7 @@ PRIORITY_COLORS: dict[Priority, str] = {
     Priority.AMBIENT: "#7A8A99",
     Priority.NORMAL: "#00E676",
     Priority.ALERT: "#FF4F00",
+    Priority.ALARM: "#FF1744",
 }
 
 #: How long an event holds the panel when it does not say.
@@ -62,6 +85,8 @@ DEFAULT_DURATION: dict[Priority, float] = {
     Priority.AMBIENT: 12.0,
     Priority.NORMAL: 8.0,
     Priority.ALERT: 10.0,
+    # Longer: an alarm is worth interrupting for, so it is worth reading twice.
+    Priority.ALARM: 20.0,
 }
 
 #: Ceiling on a single animation upload, before base64 expansion.

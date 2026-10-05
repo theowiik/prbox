@@ -1,11 +1,57 @@
 """Environment-driven configuration.
 
 Every knob is a `BOX_*` env var so the same image runs on a laptop and on a
-Raspberry Pi with nothing but the environment changing.
+Raspberry Pi with nothing but the environment changing. The defaults are the
+setup you almost certainly have, so a fresh checkout needs no configuration at
+all; a `.env` at the repo root covers the one thing that does change between
+machines, which is the port.
 """
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+#: Name of the optional file, looked for beside the code and in its parents.
+DOTENV = ".env"
+
+
+def _find_dotenv(start: Path) -> Path | None:
+    """Nearest `.env` at or above `start`, without leaving the project.
+
+    Bounded by the repo root: a stray `.env` in a home directory belongs to
+    something else and must never end up configuring the box.
+    """
+    for folder in (start, *start.parents):
+        candidate = folder / ".env"
+        if candidate.is_file():
+            return candidate
+        if (folder / ".git").exists():
+            break
+    return None
+
+
+def load_dotenv(start: Path | None = None) -> dict[str, str]:
+    """Fill in `BOX_*` values from a `.env`, if there is one.
+
+    A real environment variable always wins: the file answers "my box is on
+    9000", not "ignore what I just typed". `KEY=value`, `#` comments, blank
+    lines — no interpolation, no export syntax, nothing to learn.
+    """
+    path = _find_dotenv((start or Path.cwd()).resolve())
+    if path is None:
+        return {}
+
+    loaded: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("\"'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+            loaded[key] = value
+    return loaded
 
 
 def _int(name: str, default: int) -> int:
@@ -83,6 +129,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> Settings:
+        load_dotenv()
         settings = cls(
             mode=os.getenv("BOX_DISPLAY_MODE", cls.mode).strip().lower(),
             width=_int("BOX_DISPLAY_WIDTH", cls.width),

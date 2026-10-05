@@ -5,14 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>box</title>
 <style>
-/* Teenage-engineering-ish: warm grey faceplate, hairline rules, square
-   corners, tiny uppercase labels, one orange accent and nothing else. */
+/* Teenage-engineering-ish: dark anodised faceplate, hairline rules, square
+   corners, tiny uppercase labels, one orange accent and nothing else.
+   Dark because the panel preview is the point of the page: a light chrome
+   made the unlit LEDs the brightest thing on screen. */
 :root{
-  --paper:#d6d4cc;
-  --panel:#f3f2ed;
-  --ink:#17160f;
-  --dim:#8b887c;
-  --rule:#17160f;
+  --paper:#08080a;   /* the bench the unit sits on */
+  --panel:#141418;   /* the faceplate */
+  --well:#0c0c0e;    /* recessed surfaces: fields, tracks */
+  --ink:#e7e5dd;
+  --dim:#8b8980;
+  --rule:#2c2c32;    /* hairlines, one shade above the faceplate */
   --accent:#ff4f00;
   --screen:#050507;
 }
@@ -20,6 +23,7 @@
 html{-webkit-text-size-adjust:100%}
 body{
   background:var(--paper);
+  color-scheme:dark;
   color:var(--ink);
   font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
   font-size:13px;
@@ -105,7 +109,7 @@ body{
 .rows div{
   display:flex;justify-content:space-between;
   font-size:10px;letter-spacing:.06em;padding:3px 0;
-  border-bottom:1px solid rgba(23,22,15,.14);
+  border-bottom:1px solid rgba(231,229,221,.10);
 }
 .rows div:last-child{border-bottom:0}
 .rows span:first-child{color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
@@ -113,22 +117,32 @@ body{
 /* --- controls --- */
 .row{display:flex;gap:6px;align-items:center;margin-top:8px}
 .field{
-  width:100%;background:transparent;border:1px solid var(--rule);color:var(--ink);
+  width:100%;background:var(--well);border:1px solid var(--rule);color:var(--ink);
   padding:6px 8px;font:inherit;font-size:12px;border-radius:0;
   text-transform:none;
 }
 .field::placeholder{color:var(--dim)}
+/* Square, like everything else: the native select chrome is the only rounded
+   thing the browser would draw on this page. */
+.pick{
+  width:auto;flex:none;appearance:none;padding:6px 22px 6px 8px;cursor:pointer;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+                   linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 12px) 13px,calc(100% - 8px) 13px;
+  background-size:4px 4px;background-repeat:no-repeat;
+}
 .field:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 input[type="color"]{
   width:30px;height:30px;padding:2px;flex:none;
-  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+  border:1px solid var(--rule);background:var(--well);border-radius:0;cursor:pointer;
 }
 .btn{
   font:inherit;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
   background:var(--ink);color:var(--panel);border:1px solid var(--rule);
   padding:6px 12px;border-radius:0;cursor:pointer;white-space:nowrap;
 }
-.btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:hover{background:var(--accent);border-color:var(--accent);color:var(--paper)}
 .btn:active{transform:translateY(1px)}
 .btn.ghost{background:transparent;color:var(--ink)}
 .btn.ghost:hover{background:var(--ink);color:var(--panel);border-color:var(--rule)}
@@ -136,16 +150,16 @@ input[type="color"]{
 .check{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer}
 .check input{
   appearance:none;width:13px;height:13px;margin:0;flex:none;
-  border:1px solid var(--rule);background:transparent;border-radius:0;cursor:pointer;
+  border:1px solid var(--rule);background:var(--well);border-radius:0;cursor:pointer;
 }
-.check input:checked{background:var(--accent)}
+.check input:checked{background:var(--accent);border-color:var(--accent)}
 
 /* --- sliders: 1px track, hard square thumb --- */
 input[type="range"]{
   appearance:none;flex:1;height:14px;background:transparent;cursor:pointer;
 }
-input[type="range"]::-webkit-slider-runnable-track{height:1px;background:var(--rule)}
-input[type="range"]::-moz-range-track{height:1px;background:var(--rule)}
+input[type="range"]::-webkit-slider-runnable-track{height:1px;background:#3c3c44}
+input[type="range"]::-moz-range-track{height:1px;background:#3c3c44}
 input[type="range"]::-webkit-slider-thumb{
   appearance:none;width:8px;height:14px;margin-top:-6.5px;
   background:var(--ink);border:0;border-radius:0;
@@ -158,6 +172,45 @@ input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
 .knob label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);width:52px;flex:none}
 .knob span{font-size:10px;color:var(--dim);width:30px;text-align:right;flex:none}
 .acts{display:flex;align-items:center;gap:8px;margin-top:11px}
+
+/* --- log tail: the debug half of the debug view --- */
+.console{padding:12px;border-top:1px solid var(--rule)}
+.mod-head .filters{margin-left:auto;display:flex;gap:0}
+.mod-head .filters + .note{margin-left:10px}
+.chip{
+  font:inherit;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  background:transparent;color:var(--dim);border:1px solid var(--rule);
+  border-right:0;padding:3px 8px;border-radius:0;cursor:pointer;
+}
+.chip:last-child{border-right:1px solid var(--rule)}
+.chip.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.tail{
+  background:var(--well);border:1px solid var(--rule);
+  height:220px;overflow-y:auto;overflow-x:hidden;
+  font-size:11px;line-height:1.45;padding:6px 0;
+}
+.tail .empty{color:var(--dim);padding:4px 8px}
+/* Three columns so timestamps and sources line up as a ruler down the side. */
+.ln{display:grid;grid-template-columns:56px 74px 1fr;gap:8px;padding:1px 8px}
+.ln:hover{background:rgba(231,229,221,.05)}
+.ln .t{color:var(--dim)}
+.ln .src{color:var(--dim);text-transform:uppercase;letter-spacing:.06em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ln .msg{color:var(--ink);white-space:pre-wrap;word-break:break-word}
+/* Events are the signal, console lines the background chatter — and an event's
+   tier is the thing you are usually squinting for, so it colours the row. */
+.ln.ch-event .src{color:var(--ink)}
+.ln.pri-ambient .src{color:#7a8a99}
+.ln.pri-normal .src{color:#00e676}
+.ln.pri-alert .src{color:var(--accent)}
+.ln.pri-alarm .src{color:#ff1744;font-weight:700}
+.ln.pri-alarm .msg{color:#ff8a80}
+.ln.ch-log .msg{color:#b9b6ab}
+.ln.lvl-WARNING .msg{color:#e8b923}
+.ln.lvl-ERROR .msg,.ln.lvl-CRITICAL .msg{color:#ff5252}
+.ln.lvl-DEBUG .msg{color:var(--dim)}
+.tail[data-filter="event"] .ln:not(.ch-event){display:none}
+.tail[data-filter="log"] .ln:not(.ch-log){display:none}
 </style>
 </head>
 <body>
@@ -208,12 +261,35 @@ input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
       <input class="field" type="text" id="t" placeholder="long text scrolls" maxlength="512">
       <div class="row">
         <input type="color" id="c" value="#00ff00">
+        <select class="field pick" id="p" title="which tier this event arrives at">
+          <option value="normal">normal</option>
+          <option value="alert">alert</option>
+          <option value="alarm">alarm</option>
+          <option value="ambient">ambient</option>
+        </select>
         <button class="btn" onclick="sendText()">send</button>
         <button class="btn ghost" onclick="sendSolid()">fill</button>
       </div>
     </div>
 
   </div>
+  </div>
+
+  <div class="console">
+    <div class="mod-head">
+      <span class="idx mono">03</span><h2>log</h2>
+      <span class="filters">
+        <button class="chip on" data-ch="all">all</button>
+        <button class="chip" data-ch="event">events</button>
+        <button class="chip" data-ch="log">console</button>
+      </span>
+      <span class="note" id="l-count">0 lines</span>
+    </div>
+    <div class="tail mono" id="tail" data-filter="all"><div class="empty">waiting for the box&hellip;</div></div>
+    <div class="acts">
+      <label class="check"><input type="checkbox" id="l-follow" checked> follow</label>
+      <button class="btn ghost" onclick="wipeLog()">clear</button>
+    </div>
   </div>
 </div>
 <script>
@@ -231,28 +307,35 @@ function rememberToken(value) {
   try { localStorage.setItem('box-token', value); } catch (e) { /* private mode */ }
 }
 
-async function post(path, body, retried) {
-  const opts = { method: 'POST', headers: {} };
+async function send(method, url, body, retried) {
+  const opts = { method, headers: {} };
   if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   }
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
 
-  const res = await fetch(API + path, opts);
+  const res = await fetch(url, opts);
   if (res.status === 401 && !retried) {
     const entered = prompt('This box requires a token:', token || '');
     if (!entered) return res;
     rememberToken(entered.trim());
-    return post(path, body, true);
+    return send(method, url, body, true);
   }
-  if (!res.ok) console.error(path, res.status, await res.text());
+  if (!res.ok) console.error(url, res.status, await res.text());
   return res;
 }
+
+const post = (path, body) => send('POST', API + path, body);
 
 /* ---------- panel rendering ---------- */
 /* The server streams finished RGB frames, so the browser only has to blow the
    pixels up into round "LEDs" — no font or layout logic lives here. */
+
+// Unlit LED body — the dark plastic of the panel, matched to --panel.
+const OFF_R = 21, OFF_G = 21, OFF_B = 26;
+// Halo ramp: nothing below OFF-level light, full strength by a third of white.
+const BLOOM_FLOOR = OFF_R + OFF_G + OFF_B, BLOOM_FULL = 300;
 
 const canvas = $('screen');
 const ctx = canvas.getContext('2d');
@@ -287,16 +370,23 @@ function paint() {
       const cx = GAP + x * step + rad, cy = GAP + y * step + rad;
       const lit = r + g + b;
 
-      // Unlit LEDs stay visibly dark grey so the panel grid reads as hardware.
+      // The LED body is always there, so a barely-lit pixel must never read
+      // darker than an unlit one. Replacing the body colour did exactly that:
+      // subpixel scrolling leaves a trailing column at ~5/255, which drew
+      // near-black and punched holes in the grid behind moving text. Floor
+      // each channel at the body colour instead.
       ctx.beginPath();
       ctx.arc(cx, cy, rad, 0, 6.2832);
-      ctx.fillStyle = lit ? `rgb(${r},${g},${b})` : '#1c1b17';
+      ctx.fillStyle = `rgb(${r < OFF_R ? OFF_R : r},${g < OFF_G ? OFF_G : g},${b < OFF_B ? OFF_B : b})`;
       ctx.fill();
 
-      if (lit > 90) {
-        // Cheap bloom: one translucent halo per lit pixel beats canvas shadows.
+      // Cheap bloom: one translucent halo per lit pixel beats canvas shadows.
+      // Ramped, not switched on at a cutoff — antialiased edges sit right on
+      // any fixed threshold and pop the halo on and off frame to frame.
+      if (lit > BLOOM_FLOOR) {
+        const a = 0.34 * (lit < BLOOM_FULL ? lit / BLOOM_FULL : 1);
         const grad = ctx.createRadialGradient(cx, cy, rad * 0.4, cx, cy, rad * 2.1);
-        grad.addColorStop(0, `rgba(${r},${g},${b},0.34)`);
+        grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
         grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -390,7 +480,7 @@ $('w-auto').addEventListener('change', e => {
 function sendText() {
   const el = $('t');
   if (!el.value.trim()) return;
-  post('/text', { text: el.value, color: $('c').value });
+  post('/text', { text: el.value, color: $('c').value, priority: $('p').value });
   el.value = '';
 }
 
@@ -409,6 +499,95 @@ $('b').addEventListener('input', e => {
 
 loadWeather();
 setInterval(loadWeather, 60000);
+
+/* ---------- log tail ---------- */
+/* The box keeps the tail; this only renders it. Entries arrive over a second
+   socket rather than being polled, so an event and the frame it changed show
+   up together. */
+
+const tail = $('tail');
+const CAP = 500;           // matches the server's ring buffer
+let lastSeq = 0, logWs = null, logRetry = 500;
+
+function shortName(entry) {
+  if (entry.source) return entry.source;
+  // 'box.render.engine' is mostly noise at this width; the leaf is the useful part.
+  const parts = entry.logger.split('.');
+  return parts[parts.length - 1];
+}
+
+function addLine(entry) {
+  if (entry.seq <= lastSeq) return;   // hello backlog can overlap live entries
+  lastSeq = entry.seq;
+
+  const empty = tail.querySelector('.empty');
+  if (empty) empty.remove();
+
+  const row = document.createElement('div');
+  row.className = `ln ch-${entry.channel} lvl-${entry.level}`;
+  if (entry.priority) row.classList.add(`pri-${entry.priority}`);
+
+  const t = document.createElement('span');
+  t.className = 't';
+  t.textContent = new Date(entry.ts * 1000).toTimeString().slice(0, 8);
+
+  const src = document.createElement('span');
+  src.className = 'src';
+  src.textContent = shortName(entry);
+  src.title = entry.priority
+    ? `${entry.priority} · holds the panel ${entry.duration}s`
+    : entry.logger;
+
+  const msg = document.createElement('span');
+  msg.className = 'msg';
+  // textContent, not innerHTML: log lines carry whatever a connector sent.
+  msg.textContent = entry.message;
+
+  row.append(t, src, msg);
+  tail.append(row);
+
+  while (tail.childElementCount > CAP) tail.firstElementChild.remove();
+  $('l-count').textContent = tail.childElementCount + ' lines';
+  if ($('l-follow').checked) tail.scrollTop = tail.scrollHeight;
+}
+
+function connectLogs() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  logWs = new WebSocket(`${proto}://${location.host}/ws/logs`);
+
+  logWs.onopen = () => { logRetry = 500; };
+  logWs.onmessage = ev => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'hello') msg.entries.forEach(addLine);
+    else addLine(msg.entry);
+  };
+  logWs.onclose = () => {
+    setTimeout(connectLogs, logRetry);
+    logRetry = Math.min(logRetry * 2, 8000);
+  };
+  logWs.onerror = () => logWs.close();
+}
+connectLogs();
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === chip));
+    tail.dataset.filter = chip.dataset.ch;
+    if ($('l-follow').checked) tail.scrollTop = tail.scrollHeight;
+  });
+});
+
+// Untick follow as soon as the user scrolls up to read something.
+tail.addEventListener('scroll', () => {
+  const atBottom = tail.scrollHeight - tail.scrollTop - tail.clientHeight < 24;
+  if (!atBottom) $('l-follow').checked = false;
+});
+
+async function wipeLog() {
+  await send('DELETE', '/api/logs');
+  tail.replaceChildren();
+  $('l-count').textContent = '0 lines';
+}
 </script>
 </body>
 </html>

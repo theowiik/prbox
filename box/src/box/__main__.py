@@ -1,9 +1,12 @@
 """Run the box: `python -m box` or the `box` console script.
 
-Reads host and port from the same BOX_* settings as everything else, so a
-systemd unit on the Pi needs no uvicorn flags — only environment.
+Reads host and port from the same BOX_* settings as everything else (a `.env`
+included), so a systemd unit on the Pi needs no uvicorn flags — only
+environment — and `make dev` picks up a changed port without a second place to
+edit it.
 """
 
+import argparse
 import logging
 
 import uvicorn
@@ -13,7 +16,13 @@ from .config import Settings
 logger = logging.getLogger("box")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="box", description="Run the box.")
+    parser.add_argument(
+        "--reload", action="store_true", help="restart on code changes (development)"
+    )
+    args = parser.parse_args(argv)
+
     settings = Settings.from_env()
     if not settings.token:
         logger.warning(
@@ -24,6 +33,7 @@ def main() -> None:
         "box.api.app:app",
         host=settings.host,
         port=settings.port,
+        reload=args.reload,
         log_level="info",
     )
 

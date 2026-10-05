@@ -39,4 +39,5 @@ def test_unreachable_box_fails_cleanly(tmp_path, caplog):
     # Port 1 is reserved and will refuse instantly.
     code = main([str(path), "--url", "http://127.0.0.1:1", "--size", "8x8"])
     assert code == 1
-    assert "Could not reach box" in caplog.text
+    assert "Could not reach a box" in caplog.text
+    assert "make dev" in caplog.text

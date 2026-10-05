@@ -15,6 +15,8 @@ class PanelState(BaseModel):
     scene: str = "blank"
     #: Which connector owns the panel right now, if any.
     source: str | None = None
+    #: The tier that won it: ambient, normal, alert or alarm.
+    priority: str | None = None
     text: str = ""
     color: str = "#00FF00"
     brightness: float = Field(default=1.0, ge=0.0, le=1.0)

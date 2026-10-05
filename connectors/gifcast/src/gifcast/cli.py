@@ -6,10 +6,8 @@ import os
 import sys
 from pathlib import Path
 
-from .client import PrboxClient, PrboxError
+from .client import BoxClient, BoxError, box_url, load_dotenv
 from .convert import convert
-
-DEFAULT_URL = os.getenv("BOX_URL", "http://box:8000")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
         "gif", type=Path, help="path to a .gif (or any image PIL reads)"
     )
     parser.add_argument(
-        "--url", default=DEFAULT_URL, help=f"box base URL (default: {DEFAULT_URL})"
+        "--url", help="box base URL (default: http://localhost:8000, env: BOX_URL)"
     )
     parser.add_argument(
         "--token",
@@ -57,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--priority",
-        choices=("ambient", "normal", "alert"),
+        choices=("ambient", "normal", "alert", "alarm"),
         default="normal",
         help="how insistently to claim the panel (default: normal)",
     )
@@ -80,6 +78,8 @@ def parse_size(text: str) -> tuple[int, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Before the parser: --token defaults to BOX_TOKEN, which a .env may set.
+    load_dotenv()
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     # httpx logs every request at INFO, which is noise for a one-shot CLI.
@@ -95,9 +95,8 @@ def main(argv: list[str] | None = None) -> int:
         log.error("No such file: %s", args.gif)
         return 2
 
-    client = PrboxClient(args.url, args.token)
-
     try:
+        client = BoxClient(box_url(args.url), args.token)
         if args.size:
             width, height = parse_size(args.size)
         else:
@@ -140,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
         log.info("Sent: %s (queued behind %d)", result["id"], result["queued"])
-    except (PrboxError, ValueError, argparse.ArgumentTypeError) as exc:
+    except (BoxError, ValueError, argparse.ArgumentTypeError) as exc:
         log.error("%s", exc)
         return 1
     except OSError as exc:

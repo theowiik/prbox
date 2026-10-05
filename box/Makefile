@@ -1,9 +1,10 @@
 .PHONY: dev serve format lint test check bench
 
-# Bound to all interfaces: connectors run on other machines (desktop, tailnet),
-# so loopback-only would make the box unreachable.
+# Same entry point as production, so host and port come from BOX_* (and a .env)
+# rather than being pinned here. Bound to all interfaces by default: connectors
+# run on other machines, so loopback-only would make the box unreachable.
 dev:
-	uv run uvicorn box.api.app:app --reload --host 0.0.0.0 --port 8000
+	uv run python -m box --reload
 
 # What runs on the Pi. Host, port and everything else come from BOX_* env.
 serve:

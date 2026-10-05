@@ -1,14 +1,16 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from ..config import Settings
+from ..logs import LogBuffer, install, uninstall
 from ..render.engine import RenderEngine
 from ..scheduler import Scheduler
 from ..sources.runner import SourceRunner
 from ..sources.weather import MockWeather
-from .routes import events, panel, sources
+from .routes import events, logs, panel, sources
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +45,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        # Installed first, so everything the rest of startup logs is in the tail
+        # the dashboard shows.
+        buffer = LogBuffer()
+        buffer.bind(asyncio.get_running_loop())
+        handler = install(buffer)
+
         display = _build_display(settings)
         engine = RenderEngine(
             display,
@@ -56,6 +64,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         runner = SourceRunner(scheduler, sources, interval=settings.source_interval)
 
         app.state.settings = settings
+        app.state.logs = buffer
         app.state.display = display
         app.state.engine = engine
         app.state.scheduler = scheduler
@@ -84,6 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await scheduler.stop()
             await engine.stop()
             display.close()
+            uninstall(handler)
 
     app = FastAPI(
         title="box",
@@ -95,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(events.router)
+    app.include_router(logs.router)
     app.include_router(panel.router)
     app.include_router(sources.router)
     return app

@@ -94,6 +94,98 @@ def test_preempted_event_resumes_with_its_remaining_time(scheduler):
     assert scheduler._current.duration < 30, "resumes with what was left, not a reset"
 
 
+def test_alert_waits_for_an_alert_already_on_the_panel(scheduler):
+    """Two pings at once must not shove each other off before either reads."""
+    scheduler.submit(
+        ev(source="discord", priority=Priority.ALERT, text="first", duration=5)
+    )
+    scheduler.submit(
+        ev(source="slack", priority=Priority.ALERT, text="second", duration=5)
+    )
+
+    assert scheduler.get_state().text == "first", "the first alert keeps the panel"
+    assert scheduler.queue_depth == 1
+
+
+def test_a_waiting_alert_shows_before_queued_normals(scheduler):
+    scheduler.submit(
+        ev(source="a", priority=Priority.ALERT, text="alert-1", duration=0.05)
+    )
+    scheduler.submit(ev(source="b", text="ordinary", duration=5))
+    scheduler.submit(
+        ev(source="c", priority=Priority.ALERT, text="alert-2", duration=5)
+    )
+
+    time.sleep(0.08)
+    scheduler.tick()
+    assert scheduler.get_state().text == "alert-2", "alerts jump ahead of normals"
+
+
+def test_alarm_interrupts_an_alert(scheduler):
+    scheduler.submit(
+        ev(source="discord", priority=Priority.ALERT, text="ping", duration=30)
+    )
+    scheduler.submit(
+        ev(source="smoke", priority=Priority.ALARM, text="FIRE", duration=5)
+    )
+
+    assert scheduler.get_state().text == "FIRE"
+    assert scheduler.get_state().priority == "alarm"
+    assert scheduler.queue_depth == 1, "the interrupted alert is put back"
+
+
+def test_the_alert_an_alarm_interrupted_resumes(scheduler):
+    scheduler.submit(
+        ev(source="discord", priority=Priority.ALERT, text="ping", duration=30)
+    )
+    time.sleep(0.05)
+    scheduler.submit(
+        ev(source="smoke", priority=Priority.ALARM, text="FIRE", duration=0.05)
+    )
+
+    time.sleep(0.08)
+    scheduler.tick()
+    state = scheduler.get_state()
+    assert state.text == "ping"
+    assert state.priority == "alert"
+
+
+def test_an_alarm_interrupts_another_alarm(scheduler):
+    """'Always instant' has no exception for other alarms."""
+    scheduler.submit(
+        ev(source="clock", priority=Priority.ALARM, text="WAKE", duration=30)
+    )
+    scheduler.submit(
+        ev(source="smoke", priority=Priority.ALARM, text="FIRE", duration=30)
+    )
+    assert scheduler.get_state().text == "FIRE"
+
+
+def test_an_interrupted_event_resumes_ahead_of_waiting_alerts(scheduler):
+    """It was halfway through being read, so it gets its remaining time first."""
+    scheduler.submit(
+        ev(source="discord", priority=Priority.ALERT, text="ping", duration=30)
+    )
+    scheduler.submit(
+        ev(source="slack", priority=Priority.ALERT, text="waiting", duration=5)
+    )
+    scheduler.submit(
+        ev(source="smoke", priority=Priority.ALARM, text="FIRE", duration=0.05)
+    )
+
+    time.sleep(0.08)
+    scheduler.tick()
+    assert scheduler.get_state().text == "ping"
+
+
+def test_ambient_never_wins_the_panel_from_an_alert(scheduler):
+    scheduler.submit(
+        ev(source="discord", priority=Priority.ALERT, text="ping", duration=30)
+    )
+    scheduler.submit(ev(source="weather", priority=Priority.AMBIENT, text="12C"))
+    assert scheduler.get_state().text == "ping"
+
+
 def test_nearly_finished_event_is_not_resumed(scheduler):
     scheduler.submit(ev(source="slow", duration=MIN_RESUME / 2))
     scheduler.submit(ev(source="fire", priority=Priority.ALERT))

@@ -100,3 +100,18 @@ def test_clear_leaves_the_rotation_empty(client):
     state = client.get("/api/display").json()
     assert state["scene"] == "blank"
     assert state["ambient"] == [], "a blank card would flash the panel off"
+
+
+def test_dashboard_can_pick_a_tier(client):
+    """The debug view needs to be able to fire an alarm to see one."""
+    client.post("/api/display/text", json={"text": "quiet", "priority": "normal"})
+    client.post("/api/display/text", json={"text": "FIRE", "priority": "alarm"})
+
+    state = client.get("/api/display").json()
+    assert state["text"] == "FIRE"
+    assert state["priority"] == "alarm"
+
+
+def test_text_defaults_to_normal(client):
+    client.post("/api/display/text", json={"text": "hello"})
+    assert client.get("/api/display").json()["priority"] == "normal"

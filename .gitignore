@@ -10,3 +10,4 @@ venv/
 .vscode/
 temp/
 .DS_Store
+.env

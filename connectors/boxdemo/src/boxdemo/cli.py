@@ -5,10 +5,8 @@ import logging
 import os
 import sys
 
-from .client import BoxClient, BoxError
+from .client import BoxClient, BoxError, box_url, load_dotenv
 from .scenes import gradient_frames, life_frames, rainbow_frames
-
-DEFAULT_URL = os.getenv("BOX_URL", "http://box:8000")
 
 #: Generating frames is the slow part, so cap what a single run will produce.
 MAX_FRAMES = 600
@@ -24,9 +22,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "visual", choices=("rainbow", "life", "gradient"), help="what to render"
+        "visual",
+        nargs="?",
+        default="rainbow",
+        choices=("rainbow", "life", "gradient"),
+        help="what to render (default: rainbow)",
     )
-    parser.add_argument("--url", default=DEFAULT_URL, help=f"default: {DEFAULT_URL}")
+    parser.add_argument(
+        "--url", help="box base URL (default: http://localhost:8000, env: BOX_URL)"
+    )
     parser.add_argument(
         "--token", default=os.getenv("BOX_TOKEN"), help="bearer token (env: BOX_TOKEN)"
     )
@@ -37,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fps", type=float, default=12.0, help="playback rate")
     parser.add_argument(
         "--priority",
-        choices=("ambient", "normal", "alert"),
+        choices=("ambient", "normal", "alert", "alarm"),
         default="ambient",
         help="ambient joins the idle rotation and stays (default)",
     )
@@ -92,6 +96,8 @@ def render(args, width: int, height: int) -> bytes:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Before the parser: --token defaults to BOX_TOKEN, which a .env may set.
+    load_dotenv()
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     for chatty in ("httpx2", "httpcore2"):
@@ -104,8 +110,8 @@ def main(argv: list[str] | None = None) -> int:
         log.error("--frames must be between 1 and %d", MAX_FRAMES)
         return 2
 
-    client = BoxClient(args.url, args.token)
     try:
+        client = BoxClient(box_url(args.url), args.token)
         if args.size:
             width, height = parse_size(args.size)
         else:

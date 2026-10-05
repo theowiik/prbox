@@ -4,11 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All commands run from `box/` via Makefile. Uses uv for package management.
+Uses uv for package management. The root Makefile is the front door — nothing
+needs installing or configuring first:
 
-- `make dev` — run dev server (FastAPI + uvicorn, port 8000, auto-reload)
-- `make check` — lint + tests
-- `make format` — format and autofix with ruff
+- `make dev` — run the box (port 8000, auto-reload)
+- `make demo` / `make demo ARGS=life` — send a generative visual
+- `make gif GIF=party.gif` — send a GIF
+- `make check` / `make format` — the box *and* both connectors
+
+Inside `box/` the same targets cover the box alone, plus:
+
+- `make serve` — what runs on the Pi; host/port from `BOX_*`
 - `make bench` — measure scene render throughput at the configured panel size
 - `uv run pytest tests/test_render.py::test_long_text_scrolls` — run a single test
 
@@ -18,6 +24,7 @@ Monorepo. `box/` is the box; `connectors/` are separate projects that talk to it
 over HTTP and are never installed on the Pi.
 
 ```
+Makefile                           # dev, demo, gif, check, format — the front door
 box/                               # The box itself (uv-managed, hatchling build)
 ├── Makefile                       # dev, serve, format, lint, test, check, bench
 ├── pyproject.toml                 # Dependencies, ruff config, pytest config
@@ -27,6 +34,7 @@ box/                               # The box itself (uv-managed, hatchling build
 │   ├── config.py                  # Settings/MatrixOptions from BOX_* env
 │   ├── state.py                   # PanelState — what is on screen right now
 │   ├── events.py                  # Event contract: SceneSpec union, priorities, styling
+│   ├── logs.py                    # LogBuffer + logging bridge — the debug view's tail
 │   ├── scheduler.py               # Scheduler — priorities, queue, ambient rotation
 │   ├── bench.py                   # `make bench` — per-scene fps measurement
 │   ├── __main__.py                # `python -m box` / `box` console script
@@ -49,6 +57,7 @@ box/                               # The box itself (uv-managed, hatchling build
 │       ├── auth.py                # Bearer-token dependency for writes
 │       ├── routes/
 │       │   ├── events.py          # POST/DELETE /api/events — the connector API
+│       │   ├── logs.py            # /api/logs, /ws/logs — recent lines and events
 │       │   ├── panel.py           # /api/display/*, /ws/display, GET /
 │       │   └── sources.py         # /api/sources/*
 │       └── web/index.html         # Dashboard + live panel preview
@@ -61,12 +70,13 @@ box/                               # The box itself (uv-managed, hatchling build
     ├── test_render.py             # Frame, font, scene, FramesScene tests
     ├── test_engine.py             # Render loop
     ├── test_config.py             # Env parsing and validation
-    └── test_sources.py            # Weather source tests
+    ├── test_sources.py            # Weather source tests
+    └── test_logs.py               # Ring buffer, logging bridge, /api/logs
 connectors/                        # Separate projects; never installed on the Pi
 ├── gifcast/                       # Sends a GIF
 │   └── src/gifcast/
 │       ├── convert.py             # GIF -> panel-sized RGB frames
-│       ├── client.py              # Thin HTTP wrapper (the API needs no SDK)
+│       ├── client.py              # Thin HTTP wrapper + discover()
 │       └── cli.py                 # `gifcast party.gif`
 └── boxdemo/                       # Generative visuals, rendered on the sender
     └── src/boxdemo/
@@ -153,13 +163,31 @@ them through `Depends` accessors. Everything is stopped in reverse on shutdown.
 
 **Events and the scheduler** — the central idea. `set_scene` is last-write-wins,
 which is fine for a control panel and useless for a box several independent
-services push to. `Scheduler` owns *what is on screen now*: `alert` preempts (and
-the interrupted event resumes with its remaining time), `normal` queues, `ambient`
-joins an idle rotation. One pending event per source, so a burst coalesces.
+services push to. `Scheduler` owns *what is on screen now*. Four tiers:
+`alarm` always preempts; `alert` preempts too but yields to an instant event
+already on the panel and takes the head of the queue instead; `normal` queues
+behind any waiting alerts; `ambient` joins an idle rotation. An interrupted
+event resumes with its remaining time, ahead even of same-rank items waiting.
+One pending event per source, so a burst coalesces.
+
+The two instant tiers exist because "instant" nearly always means *jump the
+queue*, not *shove whatever is on screen* — a burst of pings that each preempt
+the last is a burst of unreadable glimpses. `Priority.rank` is the ordering:
+`Priority` is a `StrEnum`, so `<` would compare spelling, and "alarm" sorts
+before "alert".
 
 **Presentation lives on the box, not in connectors.** A connector sends `source`,
 `text` and `priority`; `events.py` maps source to colour and priority to duration.
 Restyling every integration is one edit there instead of redeploying each one.
+
+**No configuration to get started.** Every default is the setup you probably
+have: the box serves `localhost:8000` and connectors send there. The one thing
+that genuinely differs between machines is the port, so `load_dotenv()` reads an
+optional `.env` — same tiny parser in `config.py` and in each connector's
+`client.py`, since connectors never import the box. A real environment variable
+always wins over the file, and the search stops at the repo root so a stray
+`~/.env` cannot configure anything. `make dev` runs `python -m box --reload`,
+the same entry point as production, so the port lives in one place.
 
 **Connectors are separate projects.** They run wherever the data is — a Discord
 listener belongs on a desktop, not the Pi — and talk to `/api/events` over HTTP.
@@ -170,6 +198,15 @@ goes through the identical event path.
 **On-box sources** — `SourceRunner` polls them on a timer and submits ambient
 events. This is what makes the box work headless; previously the dashboard's
 JavaScript ran that timer, so closing the tab froze the panel.
+
+**The log tail** — the dashboard is an admin view, and the question it exists to
+answer is *what did the box just do*. `LogBuffer` (`logs.py`) keeps the last 500
+lines in memory; `BufferHandler` tees the root logger into it, so uvicorn,
+sources and render errors (tracebacks included) all land in the same place.
+Events ride the same pipeline rather than a channel of their own: the scheduler
+attaches `extra={"box_event": {...}}` to the line it already logs, and the
+handler turns those into `event` rows. One path, so the console and the debug
+view cannot disagree about what happened.
 
 **API** — `/api/events` is the contract; `/api/display/*` is dashboard sugar over it.
 
@@ -186,6 +223,9 @@ because connectors are on other machines.
 - `POST /api/display/clear`
 - `POST /api/display/brightness` — `{"brightness": 0.0-1.0}`
 - `WS /ws/display` — a JSON `hello` with panel size and fps, then raw RGB frames
+- `GET /api/logs` — recent entries; `since` is a cursor, `channel` filters to `log` or `event`
+- `DELETE /api/logs` — drop the tail
+- `WS /ws/logs` — a `hello` carrying the backlog, then one message per new entry
 
 `GET /` serves `web/index.html`; `/docs` is auto-generated.
 
