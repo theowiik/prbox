@@ -13,7 +13,7 @@ import math
 import random
 from functools import lru_cache
 
-from .canvas import Canvas, hsv_to_rgb
+from .canvas import RGB, Canvas, hsv_to_rgb
 from .life import next_generation, population, random_board
 from .noise import ValueNoise
 
@@ -198,5 +198,131 @@ def gradient_frames(
         for y in range(height):
             for x in range(width):
                 canvas.set_px(x, y, hsv_to_rgb(x / width + phase, saturation, 1.0))
+        out += canvas.snapshot()
+    return bytes(out)
+
+
+#: Beer palette. Amber deepens towards the bottom of the glass, like the real
+#: thing seen through more liquid.
+_BEER_TOP = (255, 186, 32)
+_BEER_BOTTOM = (176, 92, 0)
+_FOAM = (255, 244, 218)
+_FOAM_SHADE = (226, 212, 180)
+_BUBBLE = (255, 222, 130)
+_GLASS = (64, 80, 96)
+_GLASS_SHINE = (120, 140, 160)
+
+
+def _mix(a: RGB, b: RGB, t: float) -> RGB:
+    return (
+        int(a[0] + (b[0] - a[0]) * t),
+        int(a[1] + (b[1] - a[1]) * t),
+        int(a[2] + (b[2] - a[2]) * t),
+    )
+
+
+def beer_frames(width: int, height: int, fps: float = 20.0) -> bytes:
+    """A pint glass being poured: stream, rising beer and foam, then bubbles.
+
+    Plays once — the last frame is a full glass, which is what the panel
+    should rest on. Geometry scales from a 32x32 design to any panel.
+    """
+    s = min(width, height) / 32
+    cx = width / 2
+    top, bottom = round(height / 2 - 12 * s), round(height / 2 + 12 * s)
+    top_hw, bottom_hw = 8.5 * s, 6.0 * s
+    base = max(1, round(1.5 * s))  # thick glass bottom
+    foam_max = max(2, round(3 * s))
+
+    # Inner extent of the glass per row: (left, right) inclusive, or None.
+    walls: dict[int, tuple[int, int]] = {}
+    for y in range(top, bottom + 1):
+        frac = (y - top) / max(bottom - top, 1)
+        hw = top_hw + (bottom_hw - top_hw) * frac
+        walls[y] = (round(cx - hw), round(cx + hw) - 1)
+    floor = bottom - base  # lowest row liquid can occupy
+    # Where the top of the head sits when full: one row proud of the rim, so
+    # the foam domes over it the way a well-poured pint does.
+    full = top - 1
+
+    # Timeline, in seconds: stream falls in, glass fills, stream stops, rest.
+    t_drop, t_fill, t_stop, t_rest = 0.35, 3.2, 0.3, 1.6
+    count = round((t_drop + t_fill + t_stop + t_rest) * fps)
+    rng = random.Random(7)
+    bubbles = [
+        [rng.uniform(0, 1), rng.uniform(0, 1), rng.uniform(4, 9) * s]
+        for _ in range(max(4, round(9 * s * s)))
+    ]
+
+    out = bytearray()
+    for index in range(count):
+        t = index / fps
+        canvas = Canvas(width, height)
+
+        # How full, 0..1, eased out: a pour slows as the glass tops up.
+        p = min(max((t - t_drop) / t_fill, 0.0), 1.0)
+        level = 1 - (1 - p) ** 2
+        # Float row of the top; floor + 1 is an empty glass.
+        surface = floor + 1 - (floor + 1 - full) * level
+        foam = foam_max * min(1.0, level * 1.6) if level > 0 else 0.0
+
+        # Liquid and foam, inside the walls (and the dome above the rim).
+        for y in range(top - 1, floor + 1):
+            # Coverage of this row: 1 below the surface, partial at it.
+            cover = min(1.0, y + 1 - surface)
+            if cover <= 0:
+                continue
+            if y < top:  # the dome: narrower than the rim, foam only
+                left, right = walls[top][0] + 1, walls[top][1] - 1
+            else:
+                left, right = walls[y]
+            in_head = y < surface + foam
+            for x in range(left + 1, right):
+                if in_head:
+                    color = _FOAM_SHADE if (x * 7 + y * 3) % 5 == 0 else _FOAM
+                else:
+                    shade = (y - top) / max(floor - top, 1)
+                    color = _mix(_BEER_TOP, _BEER_BOTTOM, shade)
+                if cover < 1:
+                    color = _mix((0, 0, 0), color, cover)
+                canvas.set_px(x, y, color)
+
+        # Bubbles drift up through the beer below the foam.
+        if level > 0.15:
+            for bubble in bubbles:
+                bx, by, speed = bubble
+                y = floor - ((by * (floor - surface)) + t * speed) % max(
+                    floor - surface - foam, 1
+                )
+                left, right = walls[int(y)] if int(y) in walls else (0, 0)
+                x = left + 1 + int(bx * max(right - left - 1, 1))
+                if surface + foam + 1 <= y <= floor and left < x < right:
+                    canvas.set_px(x, int(y), _BUBBLE)
+
+        # The pour: a stream from the top edge down to the surface.
+        t_end = t_drop + t_fill
+        head = min(1.0, t / t_drop) * (surface - 0)  # falling in
+        tail = max(0.0, (t - t_end) / t_stop) * surface  # falling away
+        if t < t_end + t_stop:
+            sx = int(cx) - 1 if s < 1.5 else int(cx)
+            for y in range(int(tail), int(head)):
+                canvas.set_px(sx, y, _BEER_TOP)
+                if s >= 1.5:
+                    canvas.set_px(sx - 1, y, _BEER_TOP)
+
+        # The glass last, so it reads in front of the beer.
+        for y, (left, right) in walls.items():
+            canvas.set_px(left, y, _GLASS)
+            canvas.set_px(right, y, _GLASS)
+            if y > floor:
+                for x in range(left, right + 1):
+                    canvas.set_px(x, y, _GLASS)
+        # A faint reflection down one side: tints what is behind it rather than
+        # replacing it, so it never reads as a bubble.
+        for y in range(top + 2, top + 2 + round(8 * s)):
+            i = (y * width + walls[y][0] + 1) * 3
+            under = tuple(canvas.buf[i : i + 3])
+            canvas.set_px(walls[y][0] + 1, y, _mix(under, _GLASS_SHINE, 0.45))
+
         out += canvas.snapshot()
     return bytes(out)
