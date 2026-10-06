@@ -6,6 +6,11 @@ from . import font
 
 RGB = tuple[int, int, int]
 
+#: Antialiasing coverage is converted with a fixed 2.2 rather than BOX_GAMMA:
+#: it models perception of the LEDs, not the panel's tuning, and a Frame should
+#: not need to know the engine's configuration to draw text.
+_INV_GAMMA = 1 / 2.2
+
 
 def hex_to_rgb(hex_code: str) -> RGB:
     """Parse '#RRGGBB' (or 'RGB'/'RRGGBB') into an 0-255 tuple."""
@@ -70,7 +75,13 @@ class Frame:
         """
         frac = x - int(x) if x >= 0 else x - (int(x) - 1)
         base = int(x) if x >= 0 else int(x) - 1
-        left_a = 1.0 - frac
+        # Split the coverage in *linear light*. Frame values are perceptual
+        # and go through a ~2.2 gamma on the way to the LEDs, so a plain 50/50
+        # split emits only 2 * 0.5**2.2 = 44% of a whole pixel's light, and
+        # scrolling text pulses dim-bright at every half-pixel step. Raising
+        # each share to 1/2.2 keeps the light emitted constant as it moves.
+        left_a = (1.0 - frac) ** _INV_GAMMA
+        frac = frac**_INV_GAMMA
 
         for index, char in enumerate(text):
             gx = base + index * font.ADVANCE

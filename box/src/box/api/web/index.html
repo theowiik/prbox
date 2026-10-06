@@ -336,6 +336,12 @@ const OFF_R = 21, OFF_G = 21, OFF_B = 26;
 // Halo ramp: nothing below OFF-level light, full strength by a third of white.
 const BLOOM_FLOOR = OFF_R + OFF_G + OFF_B, BLOOM_FULL = 300;
 
+/* Frames arrive gamma-corrected for the LEDs, whose light output is linear in
+   the value. A monitor applies its own ~2.2 gamma on top, so drawing the bytes
+   as-is showed the panel twice as contrasty as it is — midtones crushed, and
+   antialiased edges blinking near-black. Re-encode for the screen instead. */
+const TO_SCREEN = Uint8Array.from({ length: 256 }, (_, v) => Math.round(255 * (v / 255) ** (1 / 2.2)));
+
 const canvas = $('screen');
 const ctx = canvas.getContext('2d');
 let W = 0, H = 0, CELL = 0, GAP = 0;
@@ -365,7 +371,7 @@ function paint() {
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 3;
-      const r = frame[i], g = frame[i + 1], b = frame[i + 2];
+      const r = TO_SCREEN[frame[i]], g = TO_SCREEN[frame[i + 1]], b = TO_SCREEN[frame[i + 2]];
       const cx = GAP + x * step + rad, cy = GAP + y * step + rad;
       const lit = r + g + b;
 

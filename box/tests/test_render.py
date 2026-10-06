@@ -1,6 +1,7 @@
 import pytest
 
 from box.render import font
+from box.render.engine import _gamma_lut
 from box.render.font import ADVANCE, GLYPH_HEIGHT, text_width
 from box.render.frame import Frame, hex_to_rgb, rgb_to_hex
 from box.render.scenes import BlankScene, SolidScene, TextScene
@@ -195,3 +196,19 @@ def test_swedish_letters_have_glyphs():
     for char in "ÅÄÖåäöÉéÜü":
         assert font.glyph(char) != font.glyph("?"), char
     assert font.glyph("ö") == font.glyph("Ö")
+
+
+def test_subpixel_text_emits_constant_light():
+    """Scrolling text must not pulse as it crosses half-pixel positions.
+
+    What reaches the LEDs is the frame after the ~2.2 gamma, so that is what
+    has to stay constant; a naive 50/50 split emitted 44% at the half-pixel.
+    """
+    lut = _gamma_lut(1.0, 2.2)
+    frame = Frame(32, 8)
+    light = []
+    for step in range(11):
+        frame.clear()
+        frame.draw_text("W", 10 + step / 10, 0, (128, 200, 200))
+        light.append(sum(frame.buf.translate(lut)))
+    assert max(light) / min(light) < 1.05
