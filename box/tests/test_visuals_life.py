@@ -1,8 +1,8 @@
-"""Game of Life: the automaton rules that boxdemo renders frames from."""
+"""Game of Life: the automaton rules the `life` visual renders from."""
 
 import pytest
 
-from boxdemo.life import next_generation, population, random_board
+from box.visuals.life import next_generation, population, random_board
 
 
 def board(rows: list[str]) -> tuple[bytearray, int, int]:

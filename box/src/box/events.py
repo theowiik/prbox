@@ -18,6 +18,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
+from . import visuals
 from .render.frame import hex_to_rgb
 from .render.scenes import (
     BlankScene,
@@ -179,8 +180,26 @@ class FramesSpec(BaseModel):
         return len(self._raw) // (self.width * self.height * 3)
 
 
+class VisualSpec(BaseModel):
+    """A built-in animation, by name: `rainbow`, `life`, `gradient`, `beer`.
+
+    The box renders it itself, so a sender needs no pixels — this is how an
+    on-box feed shows a pouring pint, and how curl can start a rainbow.
+    """
+
+    kind: Literal["visual"] = "visual"
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def _known(cls, v: str) -> str:
+        if v not in visuals.VISUALS:
+            raise ValueError(f"unknown visual {v!r}; try {sorted(visuals.VISUALS)}")
+        return v
+
+
 SceneSpec = Annotated[
-    TextSpec | SolidSpec | BlankSpec | FramesSpec,
+    TextSpec | SolidSpec | BlankSpec | FramesSpec | VisualSpec,
     Field(discriminator="kind"),
 ]
 
@@ -212,8 +231,22 @@ class Event(BaseModel):
         return self.resolved_color()
 
 
-def build_scene(event: Event) -> Scene:
-    """Turn an event's spec into something the render engine can draw."""
+def prepare(event: Event, size: tuple[int, int]) -> None:
+    """Do an event's slow work ahead of `build_scene`. Call it off the loop.
+
+    Only visuals have any: rendering one can take seconds on a Pi, which must
+    happen on a worker thread rather than stall the render loop. Afterwards
+    `build_scene` finds the frames cached.
+    """
+    if isinstance(event.scene, VisualSpec):
+        visuals.frames(event.scene.name, *size)
+
+
+def build_scene(event: Event, size: tuple[int, int]) -> Scene:
+    """Turn an event's spec into something the render engine can draw.
+
+    `size` is the panel's, so visuals are rendered at native resolution.
+    """
     spec = event.scene
     match spec:
         case TextSpec():
@@ -228,6 +261,16 @@ def build_scene(event: Event) -> Scene:
             return FramesScene(
                 spec.raw, spec.width, spec.height, fps=spec.fps, loop=spec.loop
             )
+        case VisualSpec():
+            visual = visuals.VISUALS[spec.name]
+            width, height = size
+            return FramesScene(
+                visuals.frames(spec.name, width, height),
+                width,
+                height,
+                fps=visual.fps,
+                loop=visual.loop,
+            )
     raise ValueError(f"unhandled scene kind: {spec!r}")
 
 
@@ -236,10 +279,10 @@ class Scheduled:
 
     __slots__ = ("id", "event", "scene", "duration", "started_at")
 
-    def __init__(self, event: Event) -> None:
+    def __init__(self, event: Event, size: tuple[int, int]) -> None:
         self.id = uuid.uuid4().hex[:12]
         self.event = event
-        self.scene = build_scene(event)
+        self.scene = build_scene(event, size)
         self.duration = event.resolved_duration()
         self.started_at: float | None = None
 

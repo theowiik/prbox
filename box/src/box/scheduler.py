@@ -27,7 +27,14 @@ import logging
 import time
 from collections import deque
 
-from .events import PRIORITY_COLORS, Event, Priority, Scheduled, TextSpec, build_scene
+from .events import (
+    PRIORITY_COLORS,
+    Event,
+    Priority,
+    Scheduled,
+    TextSpec,
+    VisualSpec,
+)
 from .render.engine import RenderEngine
 from .render.scenes import BlankScene, Scene
 from .state import PanelState
@@ -44,7 +51,11 @@ LOG_SUMMARY = 80
 
 def summarise(spec) -> str:
     """What an event *is*, in a few words: its text, or the kind of scene."""
-    return spec.text if isinstance(spec, TextSpec) else spec.kind
+    if isinstance(spec, TextSpec):
+        return spec.text
+    if isinstance(spec, VisualSpec):
+        return f"visual {spec.name}"
+    return spec.kind
 
 
 class AmbientCard:
@@ -99,6 +110,11 @@ class Scheduler:
             self._task = None
 
     @property
+    def size(self) -> tuple[int, int]:
+        """The panel's (width, height) — what events are rendered at."""
+        return self._engine.size
+
+    @property
     def queue_depth(self) -> int:
         return len(self._queue)
 
@@ -111,7 +127,7 @@ class Scheduler:
         choices should feel immediate; a source refreshing on a timer should
         not hijack whatever the rotation is currently on.
         """
-        item = Scheduled(event)
+        item = Scheduled(event, self._engine.size)
 
         if event.priority is Priority.AMBIENT:
             self._upsert_ambient(item, focus=focus)
@@ -350,4 +366,4 @@ class Scheduler:
             self._show_ambient(force=True)
 
 
-__all__ = ["AmbientCard", "Scheduler", "build_scene"]
+__all__ = ["AmbientCard", "Scheduler"]

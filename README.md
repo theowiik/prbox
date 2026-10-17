@@ -4,15 +4,18 @@
     <img src="assets/logo.png" alt="Logo" width="250px"/>
 </p>
 
-An LED matrix on a Raspberry Pi that shows whatever you send it. Connectors — a
-Discord listener, a build watcher, a GIF sender — POST events; a scheduler
-decides what is on the panel.
+An LED matrix on a Raspberry Pi that shows whatever you send it. Everything
+that can run on the Pi does — weather, RSS feeds, animations, the scheduler —
+so the box works on its own. Anything that needs another machine (a GIF on
+your laptop, a Discord login) POSTs events to it.
 
 ```
-discord listener ──┐
-build watcher    ──┼── POST /api/events ──► scheduler ──► LED matrix
-gifcast          ──┘                            ▲
-                                   weather, clock (on-box sources)
+            ┌──────────────────── the Pi ─────────────────────┐
+gifcast ──┐ │                                                 │
+curl    ──┼─┼─► POST /api/events ──► scheduler ──► render ──► LED matrix
+discord ──┘ │                          ▲                      │   or
+            │   weather, feeds ────────┘        /emulator ◄───┘ (no hardware)
+            └─────────────────────────────────────────────────┘
 ```
 
 ## Start
@@ -21,17 +24,19 @@ Needs [uv](https://docs.astral.sh/uv/), nothing else. There is nothing to
 configure.
 
 ```bash
-make dev     # the box, on http://localhost:8000
-make demo    # send it a rainbow, from another terminal
+make dev                # the box, on http://localhost:8000
+make demo VISUAL=beer   # play a built-in visual, from another terminal
 ```
 
-That address is the dashboard: a live preview of the panel, controls, and the
-event log. `/docs` is the API. The preview draws the same RGB frames the matrix
-gets, so it cannot drift from the hardware.
+No hardware needed: without `BOX_DISPLAY_MODE=matrix` the box emulates the
+panel. **http://localhost:8000/emulator** is exactly what the matrix would
+show — the pixels on black, nothing else. The dashboard at `/` adds controls
+and the event log; `/docs` is the API. Both draw the same frames the matrix
+gets, so they cannot drift from the hardware.
 
 Running the box somewhere else, or on another port? Put it in a `.env` at the
-repo root — the box and the connectors both read it, so it is one line in one
-place:
+repo root — the box, the Makefile and gifcast all read it, so it is one line in
+one place:
 
 ```ini
 BOX_PORT=9100
@@ -61,26 +66,38 @@ Two instant tiers so a burst stays readable: pings line up behind each other
 instead of each shoving the last off screen. One pending event per source, so
 ten pings do not buy eighty seconds of panel time.
 
-Scenes are `text` (centred, or scrolled when it does not fit), `frames` (an RGB
-animation, looped), `solid` and `blank`. That is the whole set: anything
-generative is *content*, rendered by a connector and sent as `frames`, so a new
-visual never means changing the Pi.
+Scenes are `text` (centred, or scrolled when it does not fit), `visual` (a
+built-in animation by name: `rainbow`, `life`, `gradient`, `beer`), `frames`
+(your own RGB animation), `solid` and `blank`.
 
-## Connectors
+## What runs where
 
-[gifcast](connectors/gifcast) sends a GIF; [boxdemo](connectors/boxdemo) sends
-rainbow blobs and Game of Life; [essr](connectors/essr) watches En Stor Stark
-Review and shows each new review as it is published (`make reviews`). All
-default to `http://localhost:8000` and take `--url` or the `.env` above. Writing another one is the curl above — there is no
-SDK to keep in sync.
+**On the Pi, if it can.** Anything that needs nothing but the box and the
+internet runs there, so it keeps working while every other machine sleeps and
+there is no second service to keep alive:
+
+- **Feeds** — RSS and Atom, one line each in `box/src/box/sources/feeds.py`. A
+  new item shows its title, or plays a visual: a new
+  [En Stor Stark Review](https://enstorstarkreview.se/) review pours a pint.
+- **Weather** — on the box's own timer (mocked, for now).
+- **Visuals** — generated on the box, once, then cached.
+
+**Elsewhere, only if it must.** A connector exists because it depends on
+something the Pi does not have. [gifcast](connectors/gifcast) needs the GIF on
+your disk; a Discord listener would need your login. Anything that can run
+`curl` is a connector — there is no SDK to keep in sync.
 
 ## On the Pi
 
-Set `BOX_DISPLAY_MODE=matrix` and install the `rgbmatrix` module from
+Set `BOX_DISPLAY_MODE=matrix` and install the `rgbmatrix` Python bindings from
 [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix)
-(not on PyPI, so not a declared dependency); `uv sync --extra pi` adds Pillow,
-which makes frame uploads much faster. Run `make bench` **on the Pi** before
-raising `BOX_FPS`.
+into the box's environment (they are not on PyPI, so not a declared
+dependency); `uv sync --extra pi` adds Pillow, which makes pushing frames to
+the panel much faster. Run `make bench` **on the Pi** before raising `BOX_FPS`.
+
+[`box/deploy/box.service`](box/deploy/box.service) runs it at boot under
+systemd. Feed state (which items were already shown) lives in
+`~/.local/state/box`, or `BOX_STATE_DIR`; `BOX_FEEDS=0` turns feeds off.
 
 Everything else is a `BOX_*` environment variable — in the environment or that
 `.env` — with a working default: panel size, fps, gamma, city, host and port,
@@ -90,10 +107,11 @@ Everything else is a `BOX_*` environment variable — in the environment or that
 ## Development
 
 ```bash
-make check    # lint + tests, box and connectors
+make check    # lint + tests, the box and gifcast
 make format
 ```
 
-One structural rule: `box.api` is the interface (HTTP, auth, dashboard) and
-everything else is the box, which never imports a web framework. A test
-enforces it.
+Two structural rules, both enforced by tests: `box.api` is the interface
+(HTTP, auth, dashboard) and the rest of the box never imports a web framework;
+and only `display/matrix.py` touches the hardware, which is what lets the
+emulator stand in for it exactly.

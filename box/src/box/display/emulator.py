@@ -9,12 +9,13 @@ logger = logging.getLogger(__name__)
 _HALF_BLOCK = "▀"
 
 
-class DevDisplay:
-    """Development display.
+class EmulatorDisplay:
+    """Stands in for the LED matrix when there is no hardware.
 
-    Holds the most recent frame for the web preview and — when stdout is a TTY
-    and BOX_TTY_PREVIEW is enabled — draws the panel in the terminal using
-    truecolor half-blocks, so you can see the real output without a browser.
+    Takes frames exactly as the matrix would, so everything upstream runs
+    unchanged; `/emulator` and the dashboard show them in a browser. With
+    BOX_TTY_PREVIEW and a TTY it also draws the panel in the terminal using
+    truecolor half-blocks.
     """
 
     def __init__(

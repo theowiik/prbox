@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from box.display.dev import DevDisplay
+from box.display.emulator import EmulatorDisplay
 from box.events import Event, Priority, SolidSpec, TextSpec
 from box.render.engine import RenderEngine
 from box.render.scenes import SolidScene
@@ -13,7 +13,7 @@ from box.scheduler import MIN_RESUME, Scheduler
 
 @pytest.fixture
 def scheduler():
-    engine = RenderEngine(DevDisplay(8, 8), 8, 8, fps=60)
+    engine = RenderEngine(EmulatorDisplay(8, 8), 8, 8, fps=60)
     return Scheduler(engine)
 
 

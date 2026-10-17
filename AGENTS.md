@@ -7,11 +7,10 @@ Guidance for coding agents (and humans) working in this repository.
 Uses uv for package management. The root Makefile is the front door — nothing
 needs installing or configuring first:
 
-- `make dev` — run the box (port 8000, auto-reload)
-- `make demo` / `make demo ARGS=life` — send a generative visual
+- `make dev` — run the box (port 8000, auto-reload, emulated panel at `/emulator`)
+- `make demo` / `make demo VISUAL=beer` — play a built-in visual
 - `make gif GIF=party.gif` — send a GIF
-- `make reviews` — watch En Stor Stark Review and announce new reviews
-- `make check` / `make format` — the box *and* both connectors
+- `make check` / `make format` — the box *and* gifcast
 
 Inside `box/` the same targets cover the box alone, plus:
 
@@ -21,15 +20,17 @@ Inside `box/` the same targets cover the box alone, plus:
 
 ## Project Structure
 
-Monorepo. `box/` is the box; `connectors/` are separate projects that talk to it
-over HTTP and are never installed on the Pi.
+Monorepo. `box/` is the box and runs on the Pi; `connectors/` are separate
+projects that talk to it over HTTP and are never installed on the Pi. See
+"What runs where" below for which side something belongs on.
 
 ```
 Makefile                           # dev, demo, gif, check, format — the front door
 box/                               # The box itself (uv-managed, hatchling build)
 ├── Makefile                       # dev, serve, format, lint, test, check, bench
-├── pyproject.toml                 # Dependencies, ruff config, pytest config
+├── pyproject.toml                 # Pi runtime deps (only), ruff, pytest config
 ├── .python-version                # Pins the interpreter (3.14.8) for uv
+├── deploy/box.service             # systemd unit for the Pi
 ├── src/box/
 │   │                              # ── core: never imports a web framework ──
 │   ├── config.py                  # Settings/MatrixOptions from BOX_* env
@@ -44,13 +45,20 @@ box/                               # The box itself (uv-managed, hatchling build
 │   │   ├── frame.py               # Frame buffer, colour conversion, subpixel text
 │   │   ├── font.py                # 5x7 bitmap font (single source of truth)
 │   │   └── scenes.py              # Blank/Text/Frames/Solid — the whole set
+│   ├── visuals/                   # Built-in animations, pre-rendered to frames
+│   │   ├── __init__.py            # VISUALS registry + cached frames(name, w, h)
+│   │   ├── animations.py          # rainbow / life / gradient / beer generators
+│   │   ├── life.py                # Conway's Game of Life rules
+│   │   ├── noise.py               # ValueNoise — animated value noise + fbm
+│   │   └── color.py               # hsv_to_rgb
 │   ├── display/                   # Output devices — frame sinks
 │   │   ├── protocol.py            # Display protocol
-│   │   ├── dev.py                 # DevDisplay — latest frame + optional TTY preview
-│   │   └── matrix.py              # MatrixDisplay — rpi-rgb-led-matrix (lazy import)
+│   │   ├── emulator.py            # EmulatorDisplay — no hardware; + TTY preview
+│   │   └── matrix.py              # MatrixDisplay — the ONLY hardware code (lazy)
 │   ├── sources/                   # On-box producers: run on the Pi, emit Events
-│   │   ├── protocol.py            # Source protocol (poll() -> Event | None)
-│   │   ├── runner.py              # SourceRunner — polls sources headlessly
+│   │   ├── protocol.py            # Source protocol (name, interval, poll())
+│   │   ├── runner.py              # SourceRunner — a loop per source, off-loop polls
+│   │   ├── feeds.py               # FEEDS + FeedSource — RSS/Atom, seen-state on disk
 │   │   └── weather.py             # MockWeather — reference on-box source
 │   │                              # ── interface: the only layer with FastAPI ──
 │   └── api/
@@ -61,10 +69,12 @@ box/                               # The box itself (uv-managed, hatchling build
 │       │   ├── logs.py            # /api/logs, /ws/logs — recent lines and events
 │       │   ├── panel.py           # /api/display/*, /ws/display, GET /
 │       │   └── sources.py         # /api/sources/*
-│       └── web/index.html         # Dashboard + live panel preview
+│       └── web/
+│           ├── index.html         # Dashboard + live panel preview
+│           └── emulator.html      # The panel alone, pixel for pixel
 └── tests/
     ├── conftest.py                # TestClient + settings fixtures
-    ├── test_architecture.py       # Enforces the core/interface boundary
+    ├── test_architecture.py       # Core/interface boundary + hardware boundary
     ├── test_events_api.py         # /api/events contract, auth, animation upload
     ├── test_scheduler.py          # Priorities, coalescing, ambient rotation
     ├── test_api.py                # Panel state, WebSocket, dashboard routes
@@ -72,26 +82,17 @@ box/                               # The box itself (uv-managed, hatchling build
     ├── test_engine.py             # Render loop
     ├── test_config.py             # Env parsing and validation
     ├── test_sources.py            # Weather source tests
-    ├── test_runner.py             # SourceRunner: off-loop polling, failures
+    ├── test_runner.py             # SourceRunner: off-loop polling, isolation
+    ├── test_feeds.py              # Feed parsing, seen-state, ETag over real HTTP
+    ├── test_visuals.py            # Generators, registry, visual events
+    ├── test_visuals_life.py       # Life rules: gliders, blinkers
     └── test_logs.py               # Ring buffer, logging bridge, /api/logs
-connectors/                        # Separate projects; never installed on the Pi
-├── gifcast/                       # Sends a GIF
-│   └── src/gifcast/
-│       ├── convert.py             # GIF -> panel-sized RGB frames
-│       ├── client.py              # Thin HTTP wrapper + discover()
-│       └── cli.py                 # `gifcast party.gif`
-├── essr/                          # Watches En Stor Stark Review's RSS feed
-│   └── src/essr/
-│       ├── feed.py                # Parse RSS, ETag fetch, Seen (announced guids)
-│       ├── client.py              # Same thin HTTP wrapper as gifcast
-│       └── cli.py                 # `essr` — the long-running watch loop
-└── boxdemo/                       # Generative visuals, rendered on the sender
-    └── src/boxdemo/
-        ├── canvas.py              # Its own RGB buffer + hsv_to_rgb
-        ├── noise.py               # ValueNoise — animated value noise + fbm
-        ├── life.py                # Conway's Game of Life rules
-        ├── scenes.py              # rainbow_frames / life_frames / gradient_frames
-        └── cli.py                 # `boxdemo rainbow`
+connectors/                        # Only what needs another machine
+└── gifcast/                       # Sends a GIF from your disk
+    └── src/gifcast/
+        ├── convert.py             # GIF -> panel-sized RGB frames
+        ├── client.py              # Thin HTTP wrapper + .env discovery
+        └── cli.py                 # `gifcast party.gif`
 assets/                            # Project assets (logo, diagrams)
 ```
 
@@ -123,13 +124,15 @@ pacing matters more than raw frame rate for how smooth the panel looks, so the
 loop tracks absolute deadlines and resyncs rather than burst-catching-up when
 it falls behind. A failing display backend is logged, not fatal.
 
-**The core renders text and pixels, nothing else.** `scenes.py` ships only
-Blank, Text, Frames and Solid. Generative visuals (rainbow gradients, Game of
-Life) are *content*: they live in `connectors/boxdemo`, render frames locally,
-and arrive as ordinary `frames` events. This is why the box has no `hsv_to_rgb`,
-no noise, and no Life rules — a new visual needs no change on the Pi. Connectors
-never import the box package; boxdemo carries its own `canvas.py`, the same way
-gifcast depends on Pillow.
+**The render loop draws text and pixels, nothing else.** `render/scenes.py`
+ships only Blank, Text, Frames and Solid. Generative visuals — rainbow, Game of
+Life, the beer pour — live in `visuals/` and are *pre-rendered* into frames, so
+the loop only ever plays bytes. An event names one (`{"kind": "visual",
+"name": "beer"}`); `events.prepare()` renders it on a worker thread (seconds,
+on a Pi, for the rainbow) and `visuals.frames()` caches it per panel size, so
+`build_scene` finds it ready. Anything that names a visual — a route, a source
+— must call `prepare` off the loop first. Add a visual by writing a generator
+and registering it in `VISUALS`; the dashboard lists them from the API.
 
 **Scenes** — a `Scene` is anything with a `name` and `render(frame, t)`, where
 `t` is seconds since the scene became active (Protocol, structural subtyping).
@@ -146,10 +149,19 @@ as big integers (provably carry-free), and `FramesScene` copies byte slices.
 raising `BOX_FPS`.
 
 **Displays** — `Display` (`display/protocol.py`) is a Protocol with `push_frame`
-and `close`. `DevDisplay` keeps the latest frame and can draw the panel in the
-terminal with truecolor half-blocks (`BOX_TTY_PREVIEW=1`). `MatrixDisplay`
-drives real HUB75 hardware via `rgbmatrix`, imported lazily so the module still
-imports off-device; it writes to an offscreen canvas and swaps on vsync.
+and `close`. `BOX_DISPLAY_MODE` picks one: `emulator` (the default; `dev` is
+the old name and still accepted) uses `EmulatorDisplay`, which stands in for
+the matrix and can draw the panel in the terminal with truecolor half-blocks
+(`BOX_TTY_PREVIEW=1`); `matrix` uses `MatrixDisplay`, which drives real HUB75
+hardware via `rgbmatrix`, imported lazily so the module still imports
+off-device; it writes to an offscreen canvas and swaps on vsync. **Only
+`display/matrix.py` may import hardware libraries** — `test_architecture.py`
+enforces it — which is what makes the emulator exact.
+
+**Deploying** — `box/deploy/box.service` runs `uv run --no-dev --extra pi
+python -m box` under systemd. `pyproject.toml`'s runtime dependencies are
+exactly what the Pi needs; dev-only tools (the `--reload` file watcher, test
+and lint tools) live in the dev group.
 
 **Configuration** — `Settings.from_env()` reads every `BOX_*` variable and
 validates it at startup, so a typo fails loudly instead of silently rendering
@@ -197,16 +209,32 @@ always wins over the file, and the search stops at the repo root so a stray
 `~/.env` cannot configure anything. `make dev` runs `python -m box --reload`,
 the same entry point as production, so the port lives in one place.
 
-**Connectors are separate projects.** They run wherever the data is — a Discord
-listener belongs on a desktop, not the Pi — and talk to `/api/events` over HTTP.
-The split is by *availability*, not mechanism: anything that must still be on
-screen when the desktop sleeps (weather, clock) runs on the Pi as a `Source`, but
-goes through the identical event path.
+**What runs where.** The rule: *on the Pi, unless it depends on something the
+Pi does not have.* Feeds, weather and visuals need nothing but the box and the
+internet, so they are on-box `Source`s and `visuals/` — no second service to
+keep alive, and they keep working while every other machine sleeps. A
+connector exists only because of a dependency: gifcast needs a GIF on your
+disk; a Discord listener would need your login. Connectors are separate
+projects that talk to `/api/events` over HTTP and never import the box (hence
+the same tiny `.env` parser copied into each). Both sides go through the
+identical event path. Before adding a connector, ask whether it could be a
+`Source` instead; it usually can.
 
-**On-box sources** — `SourceRunner` polls them on a timer and submits ambient
-events. This is what makes the box work headless; previously the dashboard's
-JavaScript ran that timer, so closing the tab froze the panel. `poll()` may
-block (a real weather source is an HTTP call); it runs off the event loop.
+**On-box sources** — anything with `name`, `interval` and `poll() -> Event |
+None`. `SourceRunner` gives each its own loop, so a feed timing out never
+delays the weather, and runs `poll()` (plus `prepare` for any visual it asks
+for) on a worker thread, so it may block on HTTP; the event is submitted back
+on the loop. Sources start polling as the app starts, without startup waiting
+on them — a Pi often brings the network up after the service.
+
+**Feeds** — `sources/feeds.py`. One `FeedConfig` line per feed in `FEEDS`;
+`show` is `"title"` (scroll the item titles) or a visual name (En Stor Stark
+Review pours a pint). RSS 2.0 and Atom via stdlib `urllib` + ElementTree, with
+ETag/304. "New" means a guid not in `Seen`, persisted under `BOX_STATE_DIR`
+(write-then-rename, since a Pi loses power); the first poll only records, so
+boot never floods the panel, and a burst becomes one event because the
+scheduler keeps one pending per source. `BOX_FEEDS=0` disables them; tests
+build `Settings(feeds=False)` so nothing hits the network.
 
 **The log tail** — the dashboard is an admin view, and the question it exists to
 answer is *what did the box just do*. `LogBuffer` (`logs.py`) keeps the last 500
@@ -220,6 +248,7 @@ view cannot disagree about what happened.
 **API** — `/api/events` is the contract; `/api/display/*` is dashboard sugar over it.
 
 - `POST /api/events` — the one endpoint connectors use
+- `GET /api/events/visuals` — names a `visual` scene accepts
 - `DELETE /api/events` — drop the queue
 - `GET /api/display` — current `PanelState` (scene, source, queued, ambient, …)
 - `GET /api/display/frame` — latest frame as base64 RGB (non-WebSocket fallback)
@@ -229,6 +258,7 @@ Writes take an optional bearer token (`BOX_TOKEN`); reads stay open so the
 dashboard loads before it knows the token. The server binds `0.0.0.0` by default
 because connectors are on other machines.
 - `POST /api/display/solid` — `{"color": "#RRGGBB"}`
+- `POST /api/display/visual` — `{"name": "beer"}`, into the rotation and on screen
 - `POST /api/display/clear`
 - `POST /api/display/brightness` — `{"brightness": 0.0-1.0}`
 - `WS /ws/display` — a JSON `hello` with panel size and fps, then raw RGB frames
@@ -236,11 +266,19 @@ because connectors are on other machines.
 - `DELETE /api/logs` — drop the tail
 - `WS /ws/logs` — a `hello` carrying the backlog, then one message per new entry
 
-`GET /` serves `web/index.html`; `/docs` is auto-generated.
+`GET /` serves `web/index.html`; `GET /emulator` serves `web/emulator.html`;
+`/docs` is auto-generated.
 
 **Web preview** — the page opens the WebSocket, draws each frame as round
 "LEDs" on a canvas with a cheap radial-gradient bloom, and reconnects with
 exponential backoff. It contains no rendering logic beyond scaling pixels up.
+
+**Emulator** — `/emulator` is the hardware stand-in: the same frame stream the
+matrix gets, drawn as one square per pixel on black, nothing else. Both pages
+re-encode values for the screen (`v^(1/2.2)`): frames are gamma-corrected for
+LEDs, whose light is linear in the value, and drawing them raw applies gamma
+twice. What it cannot show is anything the matrix library does after the
+frame — hardware brightness (`BOX_MATRIX_HW_BRIGHTNESS`) and refresh artefacts.
 
 **Testing** — `tests/conftest.py` builds an app from an explicit `Settings` per
 test. Async engine tests use `@pytest.mark.anyio` with the `anyio_backend`

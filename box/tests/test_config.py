@@ -10,7 +10,7 @@ def test_defaults_from_empty_env(monkeypatch):
         if key.startswith("BOX_"):
             monkeypatch.delenv(key, raising=False)
     settings = Settings.from_env()
-    assert (settings.mode, settings.width, settings.height) == ("dev", 32, 32)
+    assert (settings.mode, settings.width, settings.height) == ("emulator", 32, 32)
 
 
 def test_env_overrides(monkeypatch):
@@ -123,7 +123,7 @@ def test_bad_matrix_wiring_rejected_in_matrix_mode(monkeypatch, key, value):
 def test_matrix_wiring_ignored_in_dev_mode(monkeypatch):
     """A Pi's .env copied to a laptop must not stop the dev server starting."""
     monkeypatch.setenv("BOX_MATRIX_CHAIN", "3")
-    assert Settings.from_env().mode == "dev"
+    assert Settings.from_env().mode == "emulator"
 
 
 def test_chained_panels_accepted(monkeypatch):
@@ -137,3 +137,9 @@ def test_chained_panels_accepted(monkeypatch):
 def test_bool_spellings(monkeypatch, raw, expected):
     monkeypatch.setenv("BOX_TTY_PREVIEW", raw)
     assert Settings.from_env().tty_preview is expected
+
+
+def test_dev_is_still_accepted_as_the_emulator(monkeypatch):
+    """`dev` was the old name; an existing .env must keep working."""
+    monkeypatch.setenv("BOX_DISPLAY_MODE", "dev")
+    assert Settings.from_env().mode == "emulator"

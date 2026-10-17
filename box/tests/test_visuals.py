@@ -1,10 +1,18 @@
-"""Frame generation: shape, determinism, and that each visual actually moves."""
+"""Built-in visuals: generation, the registry, and playing them as events."""
 
 import pytest
 
-from boxdemo.canvas import Canvas, hsv_to_rgb
-from boxdemo.noise import ValueNoise
-from boxdemo.scenes import gradient_frames, life_frames, rainbow_frames
+from box import visuals
+from box.events import Event, VisualSpec, build_scene
+from box.render.frame import Frame
+from box.visuals.animations import (
+    beer_frames,
+    gradient_frames,
+    life_frames,
+    rainbow_frames,
+)
+from box.visuals.color import hsv_to_rgb
+from box.visuals.noise import ValueNoise
 
 W = H = 16
 STRIDE = W * H * 3
@@ -25,13 +33,6 @@ def test_hsv_primaries():
 
 def test_hsv_hue_wraps():
     assert hsv_to_rgb(1.25, 1.0, 1.0) == hsv_to_rgb(0.25, 1.0, 1.0)
-
-
-def test_canvas_ignores_out_of_bounds():
-    c = Canvas(2, 2)
-    c.set_px(-1, 0, (255, 255, 255))
-    c.set_px(0, 9, (255, 255, 255))
-    assert not any(c.buf)
 
 
 # -- noise -----------------------------------------------------------------
@@ -105,3 +106,32 @@ def test_gradient_covers_the_hue_wheel():
     frame = split(gradient_frames(W, H, 1))[0]
     row = [tuple(frame[i * 3 : i * 3 + 3]) for i in range(W)]
     assert len(set(row)) == W, "each column should be a different hue"
+
+
+def test_beer_pours_then_rests_on_a_full_glass():
+    frames = split(beer_frames(W, H))
+    lit = [sum(1 for v in f if v) for f in frames]
+    assert lit[-1] > lit[len(lit) // 4], "the glass should fill up"
+    assert frames[-1] == frames[-2], "it ends at rest, not mid-pour"
+
+
+# -- the registry and events -------------------------------------------------
+
+
+def test_every_registered_visual_renders_whole_frames():
+    for name in visuals.VISUALS:
+        data = visuals.frames(name, W, H)
+        assert data and len(data) % STRIDE == 0, name
+
+
+def test_unknown_visual_is_rejected():
+    with pytest.raises(ValueError):
+        VisualSpec(name="fireworks")
+
+
+def test_a_visual_event_plays_at_panel_size():
+    scene = build_scene(Event(scene=VisualSpec(name="beer")), (W, H))
+    frame = Frame(W, H)
+    scene.render(frame, 60.0)  # long after the pour: the full glass
+    assert any(frame.buf)
+    assert scene.loop is False

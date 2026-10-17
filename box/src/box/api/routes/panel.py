@@ -5,6 +5,7 @@ because the dashboard is easier to write against them, not because they are a
 second way in. Connectors should use `/api/events`.
 """
 
+import asyncio
 import base64
 import logging
 from pathlib import Path
@@ -20,7 +21,7 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from ...events import Event, Priority, SolidSpec, TextSpec
+from ...events import Event, Priority, SolidSpec, TextSpec, VisualSpec, prepare
 from ...scheduler import Scheduler
 from ...state import PanelState
 from ..auth import Protected
@@ -28,7 +29,7 @@ from ..auth import Protected
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_INDEX = Path(__file__).resolve().parent.parent / "web" / "index.html"
+_WEB = Path(__file__).resolve().parent.parent / "web"
 
 
 def _get_scheduler(request: Request) -> Scheduler:
@@ -85,6 +86,17 @@ async def show_solid(
     return _submit(scheduler, body)
 
 
+@router.post("/api/display/visual", tags=["display"], dependencies=[Protected])
+async def show_visual(
+    body: VisualSpec, scheduler: Scheduler = Depends(_get_scheduler)
+) -> Ok:
+    """Put a built-in visual in the ambient rotation, and on screen now."""
+    event = Event(source="dashboard", scene=body, priority=Priority.AMBIENT)
+    await asyncio.to_thread(prepare, event, scheduler.size)
+    scheduler.submit(event, focus=True)
+    return Ok()
+
+
 @router.post("/api/display/clear", tags=["display"], dependencies=[Protected])
 async def clear(scheduler: Scheduler = Depends(_get_scheduler)) -> Ok:
     # Empty the rotation and the queue and leave it empty — installing a blank
@@ -137,12 +149,25 @@ async def stream_frames(websocket: WebSocket) -> None:
         engine.unsubscribe(queue)
 
 
+def _page(name: str) -> HTMLResponse:
+    path = _WEB / name
+    try:
+        return HTMLResponse(path.read_text(encoding="utf-8"))
+    except OSError:
+        logger.exception("Could not read page at %s", path)
+        raise HTTPException(status_code=500, detail="Page unavailable") from None
+
+
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 def preview() -> HTMLResponse:
-    try:
-        return HTMLResponse(_INDEX.read_text(encoding="utf-8"))
-    except OSError:
-        logger.exception("Could not read preview page at %s", _INDEX)
-        raise HTTPException(
-            status_code=500, detail="Preview page unavailable"
-        ) from None
+    return _page("index.html")
+
+
+@router.get("/emulator", response_class=HTMLResponse, include_in_schema=False)
+def emulator() -> HTMLResponse:
+    """The panel and nothing else: what the LED matrix shows, pixel for pixel.
+
+    Reads the same frame stream as the hardware, so it works beside a real
+    matrix too — a mirror of the panel on any screen.
+    """
+    return _page("emulator.html")

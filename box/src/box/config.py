@@ -78,6 +78,12 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 
 
+def _mode(raw: str) -> str:
+    value = raw.strip().lower()
+    # Unknown values pass through for validate() to reject with a clear message.
+    return _MODES.get(value, value)
+
+
 def _bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None or raw.strip() == "":
@@ -140,9 +146,14 @@ class MatrixOptions:
             raise ValueError("BOX_MATRIX_PWM_BITS must be between 1 and 11")
 
 
+#: What BOX_DISPLAY_MODE accepts. `dev` is the old name for the emulator.
+_MODES = {"emulator": "emulator", "dev": "emulator", "matrix": "matrix"}
+
+
 @dataclass(frozen=True)
 class Settings:
-    mode: str = "dev"
+    #: `emulator` (no hardware; see /emulator) or `matrix` (a real panel).
+    mode: str = "emulator"
     width: int = 32
     height: int = 32
     fps: int = 30
@@ -159,13 +170,20 @@ class Settings:
     ambient_dwell: float = 12.0
     #: How often on-Pi sources refresh their ambient card.
     source_interval: float = 60.0
+    #: Poll the feeds in `sources/feeds.py`. Off in tests: they hit the network.
+    feeds: bool = True
+    #: Where on-box sources keep what must survive a restart (announced feed
+    #: items). Created on first use.
+    state_dir: Path = field(
+        default_factory=lambda: Path.home() / ".local" / "state" / "box"
+    )
     matrix: MatrixOptions = field(default_factory=MatrixOptions)
 
     @classmethod
     def from_env(cls) -> Settings:
         load_dotenv()
         settings = cls(
-            mode=os.getenv("BOX_DISPLAY_MODE", cls.mode).strip().lower(),
+            mode=_mode(os.getenv("BOX_DISPLAY_MODE", cls.mode)),
             width=_int("BOX_DISPLAY_WIDTH", cls.width),
             height=_int("BOX_DISPLAY_HEIGHT", cls.height),
             fps=_int("BOX_FPS", cls.fps),
@@ -177,15 +195,17 @@ class Settings:
             token=os.getenv("BOX_TOKEN", cls.token),
             ambient_dwell=_float("BOX_AMBIENT_DWELL", cls.ambient_dwell),
             source_interval=_float("BOX_SOURCE_INTERVAL", cls.source_interval),
+            feeds=_bool("BOX_FEEDS", cls.feeds),
+            state_dir=Path(os.getenv("BOX_STATE_DIR") or cls().state_dir).expanduser(),
             matrix=MatrixOptions.from_env(),
         )
         settings.validate()
         return settings
 
     def validate(self) -> None:
-        if self.mode not in {"dev", "matrix"}:
+        if self.mode not in {"emulator", "matrix"}:
             raise ValueError(
-                f"BOX_DISPLAY_MODE must be 'dev' or 'matrix', got {self.mode!r}"
+                f"BOX_DISPLAY_MODE must be 'emulator' or 'matrix', got {self.mode!r}"
             )
         if self.width < 1 or self.height < 1:
             raise ValueError("Display dimensions must be positive")

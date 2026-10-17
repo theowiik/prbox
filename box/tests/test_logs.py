@@ -172,7 +172,7 @@ def test_clear_drops_what_came_before(client):
 
 
 def test_clear_requires_the_token_when_one_is_set():
-    settings = Settings(mode="dev", width=32, height=32, fps=60, token="s3cret")
+    settings = Settings(mode="emulator", width=32, height=32, fps=60, token="s3cret")
     with TestClient(create_app(settings)) as c:
         assert c.delete("/api/logs").status_code == 401
         assert c.get("/api/logs").status_code == 200

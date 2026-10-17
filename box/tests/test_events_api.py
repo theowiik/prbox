@@ -186,7 +186,7 @@ def test_mismatched_panel_size_is_scaled_not_rejected(client):
 
 @pytest.fixture
 def secure_client():
-    settings = Settings(mode="dev", width=32, height=32, fps=60, token="s3cret")
+    settings = Settings(mode="emulator", width=32, height=32, fps=60, token="s3cret")
     with TestClient(create_app(settings)) as c:
         yield c
 

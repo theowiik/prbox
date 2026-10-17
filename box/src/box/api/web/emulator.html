@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>box · emulator</title>
+<style>
+/* Nothing but the panel. Black like an unlit matrix, the grid scaled to fill
+   the window, no chrome. Double-click for fullscreen. */
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+body{display:grid;place-items:center;cursor:none}
+canvas{display:block}
+#msg{position:fixed;inset:auto 0 16px;text-align:center;font:11px ui-monospace,Menlo,Consolas,monospace;
+     color:#444;letter-spacing:.1em;text-transform:uppercase;cursor:default}
+</style>
+</head>
+<body>
+<canvas id="panel"></canvas>
+<div id="msg">connecting</div>
+<script>
+'use strict';
+/* An emulator of the hardware, so it shows exactly the frames the LED matrix
+   receives and nothing else: one square per pixel, no bloom, no styling.
+
+   The one transform is the light itself. Frames arrive gamma-corrected for
+   the LEDs, whose output is linear in the value; a screen applies its own
+   ~2.2 gamma, so values are re-encoded to make the screen emit what the
+   panel would.
+
+   ?gap=0 draws pixels edge to edge; the default leaves the thin dark rule a
+   real panel has between LEDs. */
+
+const params = new URLSearchParams(location.search);
+const GAP = params.has('gap') ? Math.max(0, +params.get('gap')) : 0.12;
+const TO_SCREEN = Uint8Array.from({ length: 256 }, (_, v) => Math.round(255 * (v / 255) ** (1 / 2.2)));
+
+const canvas = document.getElementById('panel');
+const ctx = canvas.getContext('2d', { alpha: false });
+const msg = document.getElementById('msg');
+let W = 0, H = 0, frame = null, dirty = false;
+
+function layout() {
+  if (!W) return;
+  const dpr = window.devicePixelRatio || 1;
+  // Whole device pixels per cell, so every LED is the same size and edges
+  // stay crisp rather than smeared across a fractional boundary.
+  const cell = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H) * dpr));
+  canvas.width = W * cell;
+  canvas.height = H * cell;
+  canvas.style.width = canvas.width / dpr + 'px';
+  canvas.style.height = canvas.height / dpr + 'px';
+  dirty = true;
+}
+
+function paint() {
+  requestAnimationFrame(paint);
+  if (!dirty || !frame) return;
+  dirty = false;
+
+  const cell = canvas.width / W;
+  const gap = Math.round(cell * GAP);
+  const size = cell - gap;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3;
+      const r = frame[i], g = frame[i + 1], b = frame[i + 2];
+      if (!(r | g | b)) continue; // an unlit LED is black; skip it
+      ctx.fillStyle = `rgb(${TO_SCREEN[r]},${TO_SCREEN[g]},${TO_SCREEN[b]})`;
+      ctx.fillRect(x * cell + (gap >> 1), y * cell + (gap >> 1), size, size);
+    }
+  }
+}
+requestAnimationFrame(paint);
+
+let retry = 500;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws/display`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { retry = 500; msg.textContent = ''; };
+  ws.onmessage = ev => {
+    if (typeof ev.data === 'string') {
+      const hello = JSON.parse(ev.data);
+      if (hello.type === 'hello') { W = hello.width; H = hello.height; layout(); }
+      return;
+    }
+    frame = new Uint8Array(ev.data);
+    dirty = true;
+  };
+  ws.onclose = () => {
+    // Say so rather than freeze on the last frame: a stale panel looks live.
+    frame = null;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    msg.textContent = 'no signal';
+    setTimeout(connect, retry);
+    retry = Math.min(retry * 2, 8000);
+  };
+  ws.onerror = () => ws.close();
+}
+connect();
+
+addEventListener('resize', layout);
+addEventListener('dblclick', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+});
+</script>
+</body>
+</html>

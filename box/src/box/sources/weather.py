@@ -49,9 +49,12 @@ class MockWeather:
 
     name = "weather"
 
-    def __init__(self, city: str = "Stockholm", dwell: float = 12.0) -> None:
+    def __init__(
+        self, city: str = "Stockholm", dwell: float = 12.0, interval: float = 60.0
+    ) -> None:
         self.city = city
         self.dwell = dwell
+        self.interval = interval
 
     def poll(self) -> Event:
         """Ambient card for the idle rotation, refreshed in place each cycle."""

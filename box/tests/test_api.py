@@ -1,10 +1,19 @@
+import time
+
+
 def test_get_display_state(client):
     """The rotation starts with whatever on-box sources report, nothing else.
 
     The core ships no generative scenes, so an idle box with no sources is
     simply blank; content arrives from sources and connectors.
     """
-    response = client.get("/api/display")
+    # Sources poll on their own loops just after startup, so give the first
+    # weather poll a moment rather than racing it.
+    for _ in range(100):
+        response = client.get("/api/display")
+        if response.json()["source"] == "weather":
+            break
+        time.sleep(0.01)
     assert response.status_code == 200
     data = response.json()
     assert data["source"] == "weather"
@@ -115,3 +124,9 @@ def test_dashboard_can_pick_a_tier(client):
 def test_text_defaults_to_normal(client):
     client.post("/api/display/text", json={"text": "hello"})
     assert client.get("/api/display").json()["priority"] == "normal"
+
+
+def test_emulator_page_is_served(client):
+    r = client.get("/emulator")
+    assert r.status_code == 200
+    assert "/ws/display" in r.text

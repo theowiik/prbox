@@ -115,3 +115,21 @@ def test_core_imports_with_no_web_framework_available():
         f"core failed to import without a web framework:\n{result.stderr}"
     )
     assert "core imported cleanly" in result.stdout
+
+
+# -- the hardware boundary ---------------------------------------------------
+
+#: The one module allowed to talk to the LED matrix. Everything upstream of
+#: it deals in frames, which is what makes the emulator exact: swap this
+#: module for `display/emulator.py` and nothing else can tell.
+HARDWARE = PACKAGE / "display" / "matrix.py"
+
+HARDWARE_LIBRARIES = {"rgbmatrix", "RPi", "gpiozero"}
+
+
+@pytest.mark.parametrize("module", core_modules(), ids=lambda p: p.stem)
+def test_only_the_matrix_display_touches_hardware(module):
+    if module == HARDWARE:
+        return
+    found = imported_roots(module) & HARDWARE_LIBRARIES
+    assert not found, f"{module.name} imports {found}; only matrix.py may"

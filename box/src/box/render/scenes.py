@@ -1,9 +1,9 @@
 """Scenes: things that can draw themselves into a Frame over time.
 
-The core ships only what the box fundamentally does — show text, play pixels,
-fill, and go dark. Anything generative (rainbow gradients, Game of Life) is
-*content*, not core, and lives in a connector that renders frames and pushes
-them like any other event. See connectors/boxdemo.
+The render loop only does cheap things — show text, play pixels, fill, go
+dark. Generative visuals (rainbow, Game of Life, the beer pour) are rendered
+ahead of time by `box.visuals` into frames, and arrive here as a FramesScene:
+however expensive a visual is to make, playing it is a byte copy per tick.
 """
 
 from typing import Protocol

@@ -12,11 +12,17 @@ from ..events import Event
 
 
 class Source(Protocol):
-    """Something the box polls for ambient content. Structural, no base class."""
+    """Something the box polls for content. Structural, no base class."""
 
-    #: Identifies this source's card in the ambient rotation.
+    #: Identifies the source: its ambient card, its colour, its log lines.
     name: str
+    #: Seconds between polls.
+    interval: float
 
     def poll(self) -> Event | None:
-        """Current content, or None to leave the rotation untouched."""
+        """Something to show, or None for nothing new.
+
+        Runs on a worker thread, so it may block — fetch a URL, read a file.
+        It must not touch the scheduler; return the event instead.
+        """
         ...

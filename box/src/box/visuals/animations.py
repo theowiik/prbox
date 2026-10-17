@@ -1,19 +1,17 @@
-"""Generative visuals, rendered to frames locally.
+"""The generators behind the built-in visuals.
 
-These used to live inside the box. They are content, not core: the box knows
-how to play a buffer of RGB frames, and everything here just produces one. That
-keeps the box's render path to text and pixels, and means a new visual never
-needs a change on the Pi.
-
-Frames are generated ahead of time and uploaded in one go, so nothing has to
-keep running afterwards — the box loops the buffer forever on its own.
+Each one renders a whole animation to a flat RGB buffer up front, which the
+box then plays through `FramesScene`. Generating is the expensive part — the
+rainbow takes seconds on a Pi — so it happens once, on a worker thread, and is
+cached (see `visuals/__init__.py`). The render loop only ever copies bytes.
 """
 
 import math
 import random
 from functools import lru_cache
 
-from .canvas import RGB, Canvas, hsv_to_rgb
+from ..render.frame import RGB, Frame
+from .color import hsv_to_rgb
 from .life import next_generation, population, random_board
 from .noise import ValueNoise
 
@@ -191,14 +189,14 @@ def gradient_frames(
     width: int, height: int, count: int, *, saturation: float = 1.0
 ) -> bytes:
     """A plain hue sweep — the simplest thing that proves the pipeline works."""
-    canvas = Canvas(width, height)
+    canvas = Frame(width, height)
     out = bytearray()
     for index in range(count):
         phase = index / count
         for y in range(height):
             for x in range(width):
                 canvas.set_px(x, y, hsv_to_rgb(x / width + phase, saturation, 1.0))
-        out += canvas.snapshot()
+        out += bytes(canvas.buf)
     return bytes(out)
 
 
@@ -257,7 +255,7 @@ def beer_frames(width: int, height: int, fps: float = 20.0) -> bytes:
     out = bytearray()
     for index in range(count):
         t = index / fps
-        canvas = Canvas(width, height)
+        canvas = Frame(width, height)
 
         # How full, 0..1, eased out: a pour slows as the glass tops up.
         p = min(max((t - t_drop) / t_fill, 0.0), 1.0)
@@ -324,5 +322,5 @@ def beer_frames(width: int, height: int, fps: float = 20.0) -> bytes:
             under = tuple(canvas.buf[i : i + 3])
             canvas.set_px(walls[y][0] + 1, y, _mix(under, _GLASS_SHINE, 0.45))
 
-        out += canvas.snapshot()
+        out += bytes(canvas.buf)
     return bytes(out)

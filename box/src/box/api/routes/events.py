@@ -5,10 +5,13 @@ sender, the box's own weather poller — posts the same Event here. Adding an
 integration means writing a curl call, not a client library.
 """
 
+import asyncio
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from ...events import Event, Priority
+from ... import visuals
+from ...events import Event, Priority, prepare
 from ...scheduler import Scheduler
 from ..auth import Protected
 
@@ -36,6 +39,9 @@ class Accepted(BaseModel):
 async def submit(
     event: Event, scheduler: Scheduler = Depends(_get_scheduler)
 ) -> Accepted:
+    # Rendering a visual can take seconds on a Pi: do it on a worker thread,
+    # so the render loop keeps its cadence while the request waits.
+    await asyncio.to_thread(prepare, event, scheduler.size)
     item = scheduler.submit(event)
     return Accepted(
         id=item.id,
@@ -44,6 +50,11 @@ async def submit(
         duration=item.duration,
         queued=scheduler.queue_depth,
     )
+
+
+@router.get("/visuals", summary="Built-in visuals a `visual` scene can name")
+def list_visuals() -> list[str]:
+    return sorted(visuals.VISUALS)
 
 
 @router.delete("", summary="Drop queued events", dependencies=[Protected])

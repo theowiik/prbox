@@ -6,9 +6,18 @@ from box.config import Settings
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(tmp_path) -> Settings:
     # A small panel keeps per-frame work trivial so tests stay fast.
-    return Settings(mode="dev", width=32, height=32, fps=60)
+    return Settings(
+        mode="emulator",
+        width=32,
+        height=32,
+        fps=60,
+        # Feeds poll the internet and remember what they saw; neither belongs
+        # in a test run.
+        feeds=False,
+        state_dir=tmp_path / "state",
+    )
 
 
 @pytest.fixture

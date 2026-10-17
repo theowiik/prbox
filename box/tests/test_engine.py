@@ -2,13 +2,13 @@ import asyncio
 
 import pytest
 
-from box.display.dev import DevDisplay
+from box.display.emulator import EmulatorDisplay
 from box.render.engine import RenderEngine, _crossfade, _gamma_lut
 from box.render.scenes import SolidScene
 
 
-def make_engine(fps: int = 120) -> tuple[RenderEngine, DevDisplay]:
-    display = DevDisplay(8, 4)
+def make_engine(fps: int = 120) -> tuple[RenderEngine, EmulatorDisplay]:
+    display = EmulatorDisplay(8, 4)
     return RenderEngine(display, 8, 4, fps=fps), display
 
 
@@ -94,7 +94,7 @@ async def test_slow_subscriber_does_not_stall_the_loop():
 
 @pytest.mark.anyio
 async def test_display_errors_do_not_kill_the_loop():
-    class Broken(DevDisplay):
+    class Broken(EmulatorDisplay):
         def push_frame(self, buf):
             raise RuntimeError("hardware fell over")
 

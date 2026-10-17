@@ -70,6 +70,8 @@ body{
 .tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .tag b{color:var(--ink);font-weight:400}
 .readout{margin-left:auto;font-size:10px;letter-spacing:.08em;color:var(--dim)}
+.emu{margin-left:12px;text-decoration:none}
+.emu:hover{color:var(--accent)}
 .bezel{background:var(--screen);border:1px solid var(--rule);padding:8px;line-height:0}
 #screen{display:block;width:100%;height:auto;image-rendering:pixelated}
 
@@ -95,6 +97,7 @@ body{
   .screen{grid-column:2;grid-row:1;border-bottom:0;border-left:1px solid var(--rule)}
 }
 .mod-head{display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.row.wrap{flex-wrap:wrap}
 .idx{
   font-size:9px;letter-spacing:.06em;color:var(--panel);background:var(--ink);
   padding:1px 4px;flex:none;
@@ -228,6 +231,7 @@ input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
     <div class="screen-head">
       <span class="tag">out <b>/ live panel</b></span>
       <span class="readout mono" id="meta">&mdash;</span>
+      <a class="readout mono emu" href="/emulator" target="_blank" title="the panel alone, as the hardware shows it">emulator &#8599;</a>
     </div>
     <div class="bezel"><canvas id="screen"></canvas></div>
     <div class="bright">
@@ -269,6 +273,11 @@ input[type="range"]:hover::-moz-range-thumb{background:var(--accent)}
         <button class="btn" onclick="sendText()">send</button>
         <button class="btn ghost" onclick="sendSolid()">fill</button>
       </div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="idx mono">03</span><h2>visuals</h2><span class="note">rendered on the box</span></div>
+      <div class="row wrap" id="visuals"></div>
     </div>
 
   </div>
@@ -484,6 +493,18 @@ function sendText() {
 }
 
 function sendSolid() { post('/solid', { color: $('c').value }); }
+
+/* One button per built-in visual, from the box's own list, so a new visual
+   shows up here without touching the page. */
+fetch('/api/events/visuals').then(r => r.json()).then(names => {
+  for (const name of names) {
+    const b = document.createElement('button');
+    b.className = 'btn ghost';
+    b.textContent = name;
+    b.onclick = () => post('/visual', { name });
+    $('visuals').append(b);
+  }
+});
 
 $('t').addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
 

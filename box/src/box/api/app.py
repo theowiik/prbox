@@ -12,6 +12,8 @@ from ..config import Settings
 from ..logs import LogBuffer, install, uninstall
 from ..render.engine import RenderEngine
 from ..scheduler import Scheduler
+from ..sources.feeds import FEEDS, FeedSource
+from ..sources.protocol import Source
 from ..sources.runner import SourceRunner
 from ..sources.weather import MockWeather
 from .routes import events, logs, panel, sources
@@ -35,9 +37,11 @@ def _build_display(settings: Settings):
             brightness=settings.matrix.brightness,
         )
 
-    from ..display.dev import DevDisplay
+    from ..display.emulator import EmulatorDisplay
 
-    return DevDisplay(settings.width, settings.height, tty_preview=settings.tty_preview)
+    return EmulatorDisplay(
+        settings.width, settings.height, tty_preview=settings.tty_preview
+    )
 
 
 async def _validation_error(request: Request, exc: RequestValidationError):
@@ -83,8 +87,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             gamma=settings.gamma,
         )
         scheduler = Scheduler(engine)
-        sources = [MockWeather(settings.city, dwell=settings.ambient_dwell)]
-        runner = SourceRunner(scheduler, sources, interval=settings.source_interval)
+        sources: list[Source] = [
+            MockWeather(
+                settings.city,
+                dwell=settings.ambient_dwell,
+                interval=settings.source_interval,
+            )
+        ]
+        if settings.feeds:
+            sources += [FeedSource(feed, settings.state_dir) for feed in FEEDS]
+        runner = SourceRunner(scheduler, sources)
 
         app.state.settings = settings
         app.state.logs = buffer
@@ -95,8 +107,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         await engine.start()
         await scheduler.start()
-        # Poll once up front so the panel is populated at boot, not a minute in.
-        await runner.poll_once()
+        # Each source polls as soon as its loop starts, so the panel fills in
+        # within moments of boot — without startup waiting on the network,
+        # which a Pi often brings up after the service.
         await runner.start()
 
         logger.info(
