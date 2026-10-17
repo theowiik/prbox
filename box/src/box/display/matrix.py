@@ -38,7 +38,7 @@ class MatrixDisplay:
                 "BOX_DISPLAY_MODE=matrix requires the 'rgbmatrix' Python module "
                 "from https://github.com/hzeller/rpi-rgb-led-matrix (build it with "
                 "`make build-python && sudo make install-python`). Use "
-                "BOX_DISPLAY_MODE=dev off-device."
+                "BOX_DISPLAY_MODE=emulator off-device."
             ) from exc
 
         self.width = width
